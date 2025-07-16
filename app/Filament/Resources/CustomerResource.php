@@ -13,8 +13,11 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
+use Illuminate\Support\Facades\Auth;
+
 class CustomerResource extends Resource
 {
+    // Permission handled by policy/Filament Shield
     protected static ?string $model = Customer::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
