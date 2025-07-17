@@ -26,6 +26,10 @@ class HargaResource extends Resource
                 Forms\Components\TextInput::make('nama')
                     ->label('Nama')
                     ->required()
+                    ->unique(ignoreRecord: true, table: 'hargas', column: 'nama')
+                            ->validationMessages([
+                                'unique' => 'Nama sudah terdaftar, silakan gunakan nama lain.',
+                            ])
                     ->maxLength(255),
 
                 Forms\Components\Select::make('tingkat')

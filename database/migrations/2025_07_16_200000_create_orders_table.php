@@ -17,6 +17,16 @@ return new class extends Migration
             $table->enum('prioritas', ['low', 'medium', 'urgent'])->nullable();
             $table->enum('status_payment', ['belum', 'DP', 'Lunas'])->nullable();
             $table->unsignedBigInteger('price');
+            $table->unsignedBigInteger('amt_reff')->nullable();
+            $table->unsignedBigInteger('price_dexain')->nullable();
+            $table->unsignedBigInteger('price_akademisi')->nullable();
+            $table->date('due_days')->nullable();
+            $table->string('contact')->nullable();
+            $table->foreignId('akademisi_id')->nullable()->constrained('akademisis');
+            $table->json('file_tambahan')->nullable();
+            $table->json('link_tambahan')->nullable();
+            $table->string('bukti_payment')->nullable();
+            $table->text('note')->nullable();
             $table->timestamps();
         });
     }

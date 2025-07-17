@@ -3,14 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
-use App\Models\Order;
-use App\Models\Harga;
-use App\Models\Customer;
-use Filament\Forms;
+use App\Models\{Order, Harga, Customer, Akademisi};
+use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, Repeater, FileUpload, Textarea};
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 
 class OrderResource extends Resource
 {
@@ -24,10 +23,10 @@ class OrderResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Grid::make(2)
+                Grid::make(2)
                     ->schema([
-                        Forms\Components\Select::make('nama')
-                            ->label('Nama Jokian')
+                        Select::make('nama')
+                            ->label('Jokian')
                             ->required()
                             ->searchable()
                             ->options(fn () =>
@@ -39,6 +38,64 @@ class OrderResource extends Resource
                                     return [$harga->id => $label];
                                 })
                             )
+                            ->createOptionForm([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('nama')
+                                            ->label('Nama')
+                                            ->required()
+                                            ->unique(ignoreRecord: true, table: 'hargas', column: 'nama')
+                                            ->validationMessages([
+                                                'unique' => 'Nama sudah terdaftar, silakan gunakan nama lain.',
+                                            ]),
+                                        Select::make('tingkat')
+                                            ->label('Tingkat')
+                                            ->options([
+                                                'low' => 'Low',
+                                                'medium' => 'Medium',
+                                                'high' => 'High',
+                                            ])
+                                            ->required(),
+                                        TextInput::make('harga')
+                                            ->label('Harga')
+                                            ->required()
+                                            ->prefix('Rp')
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, $set) {
+                                                // Format input saat user mengetik
+                                                $number = preg_replace('/[^0-9]/', '', $state);
+                                                $set('harga', $number === '' ? null : number_format((int) $number, 0, '', '.'));
+                                            })
+                                            ->formatStateUsing(function ($state) {
+                                                if ($state === null || $state === '') return null;
+                                                $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
+                                                return number_format((int) $number, 0, '', '.');
+                                            })
+                                            ->dehydrateStateUsing(function ($state) {
+                                                return preg_replace('/[^0-9]/', '', $state);
+                                            }),
+                                        Select::make('tipe')
+                                            ->label('Tipe')
+                                            ->options([
+                                                'pendidikan' => 'Pendidikan',
+                                                'instansi' => 'Instansi',
+                                            ])
+                                            ->required(),
+                                    ]),
+                            ])
+                            ->createOptionUsing(function (array $data) {
+                                // Simpan data Harga baru dan return id-nya
+                                $harga = Harga::create([
+                                    'nama' => $data['nama'],
+                                    'tingkat' => $data['tingkat'],
+                                    'harga' => preg_replace('/[^0-9]/', '', $data['harga']),
+                                    'tipe' => $data['tipe'],
+                                ]);
+                                return $harga->id;
+                            })
+                            ->createOptionAction(function ($action) {
+                                $action->modalHeading('Tambah Harga Baru');
+                            })
                             ->reactive()
                             ->afterStateUpdated(function ($state, $set) {
                                 $harga = Harga::find($state);
@@ -54,30 +111,55 @@ class OrderResource extends Resource
                                 $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                 $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
                             }),
-                        Forms\Components\TextInput::make('nomer_nota')
+                        TextInput::make('nomer_nota')
                             ->label('Nomer Nota')
                             ->disabled()
                             ->dehydrated()
                             ->placeholder('Auto Generate'),
                     ]),
-                Forms\Components\Grid::make(2)
+                Grid::make(2)
                     ->schema([
-                        Forms\Components\Select::make('customer_id')
+                        Select::make('customer_id')
                             ->label('Customer')
                             ->required()
                             ->searchable()
-                            ->options(fn () => \App\Models\Customer::all()->mapWithKeys(function($customer) {
+                            ->options(fn () => Customer::all()->mapWithKeys(function($customer) {
                                 $label = $customer->code . ' - ' . $customer->name;
                                 return [$customer->id => $label];
                             }))
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('Nama Customer')
+                                    ->required()
+                                    ->maxLength(255),
+                                TextInput::make('nomor')
+                                    ->label('Nomor')
+                                    ->required()
+                                    ->maxLength(255),
+                                Textarea::make('description')
+                                    ->label('Deskripsi')
+                                    ->rows(3),
+                            ])
+                            ->createOptionUsing(function (array $data) {
+                                // Simpan data Customer baru dan return id-nya
+                                $customer = Customer::create([
+                                    'name' => $data['name'],
+                                    'nomor' => $data['nomor'],
+                                    'description' => $data['description'] ?? null,
+                                ]);
+                                return $customer->id;
+                            })
+                            ->createOptionAction(function ($action) {
+                                $action->modalHeading('Tambah Customer Baru');
+                            })
                             ->reactive()
                             ->afterStateUpdated(function ($state, $set) {
-                                $customer = \App\Models\Customer::find($state);
+                                $customer = Customer::find($state);
                                 $nomor = $customer?->nomor ?? '';
                                 $nomor = ltrim($nomor, '0');
                                 $set('contact', $nomor);
                             }),
-                        Forms\Components\Select::make('status')
+                        Select::make('status')
                             ->label('Penegerjaan')
                             ->required()
                             ->options([
@@ -87,9 +169,9 @@ class OrderResource extends Resource
                             ])
                             ->default('Not started'),
                     ]),
-                Forms\Components\Grid::make(2)
+                Grid::make(2)
                     ->schema([
-                        Forms\Components\Select::make('prioritas')
+                        Select::make('prioritas')
                             ->label('Prioritas')
                             ->required()
                             ->options([
@@ -97,17 +179,42 @@ class OrderResource extends Resource
                                 'medium' => 'Medium',
                                 'urgent' => 'Urgent',
                             ]),
-                        Forms\Components\Select::make('status_payment')
+                        Select::make('status_payment')
                             ->label('Status Payment')
+                            ->disabled()
                             ->options([
                                 'belum' => 'Belum',
                                 'DP' => 'DP',
                                 'Lunas' => 'Lunas',
-                            ]),
+                            ])
+                            ->default(function ($get) {
+                                $amt_reff = (int) $get('amt_reff');
+                                $price = (int) $get('price');
+                                if ($amt_reff == 0) {
+                                    return 'belum';
+                                } elseif ($amt_reff < $price) {
+                                    return 'DP';
+                                } elseif ($amt_reff == $price) {
+                                    return 'Lunas';
+                                }
+                                return 'belum';
+                            })
+                            ->reactive()
+                            ->afterStateHydrated(function ($state, $set, $get) {
+                                $amt_reff = (int) $get('amt_reff');
+                                $price = (int) $get('price');
+                                if ($amt_reff == 0) {
+                                    $set('status_payment', 'belum');
+                                } elseif ($amt_reff < $price) {
+                                    $set('status_payment', 'DP');
+                                } elseif ($amt_reff == $price) {
+                                    $set('status_payment', 'Lunas');
+                                }
+                            }),
                     ]),
-                Forms\Components\Grid::make(3)
+                Grid::make(3)
                     ->schema([
-                        Forms\Components\TextInput::make('price')
+                        TextInput::make('price')
                             ->label('Price Normal')
                             ->required()
                             ->prefix('Rp')
@@ -135,7 +242,7 @@ class OrderResource extends Resource
                                 return preg_replace('/[^0-9]/', '', $state);
                             })
                             ->disabled(),
-                        Forms\Components\TextInput::make('price_dexain')
+                        TextInput::make('price_dexain')
                             ->label('Price Dexa.in')
                             ->prefix('Rp')
                             ->formatStateUsing(function ($state) {
@@ -146,9 +253,9 @@ class OrderResource extends Resource
                             ->dehydrateStateUsing(function ($state) {
                                 return preg_replace('/[^0-9]/', '', $state);
                             })
-                            ->dehydrated()
+                            ->dehydrated(true)
                             ->disabled(),
-                        Forms\Components\TextInput::make('price_akademisi')
+                        TextInput::make('price_akademisi')
                             ->label('Price Akademisi')
                             ->prefix('Rp')
                             ->formatStateUsing(function ($state) {
@@ -159,14 +266,14 @@ class OrderResource extends Resource
                             ->dehydrateStateUsing(function ($state) {
                                 return preg_replace('/[^0-9]/', '', $state);
                             })
-                            ->dehydrated()
+                            ->dehydrated(true)
                             ->disabled(),
                     ]),
-                Forms\Components\Grid::make(2)
+                Grid::make(2)
                     ->schema([
-                        Forms\Components\DatePicker::make('due_days')
+                        DatePicker::make('due_days')
                             ->label('Due Date'),
-                        Forms\Components\TextInput::make('contact')
+                        TextInput::make('contact')
                             ->label('Contact')
                             ->prefix('+62')
                             ->disabled()
@@ -175,7 +282,7 @@ class OrderResource extends Resource
                                 // Isi contact otomatis dari customer
                                 $customerId = $get('customer_id');
                                 if ($customerId) {
-                                    $customer = \App\Models\Customer::find($customerId);
+                                    $customer = Customer::find($customerId);
                                     $nomor = $customer?->nomor ?? '';
                                     // Hilangkan leading 0 jika ada
                                     $nomor = ltrim($nomor, '0');
@@ -183,35 +290,37 @@ class OrderResource extends Resource
                                 }
                             }),
                     ]),
-                    Forms\Components\Grid::make(2)
+                    Grid::make(2)
                     ->schema([
-                        Forms\Components\Repeater::make('file_tambahan')
+                        Repeater::make('file_tambahan')
                             ->label('File/Media Tambahan (File)')
                             ->schema([
-                                Forms\Components\FileUpload::make('file')
+                                FileUpload::make('file')
                                     ->label('File')
                                     ->directory('order-tambahan'),
                             ])
                             ->addActionLabel('Tambah File'),
-                        Forms\Components\Repeater::make('link_tambahan')
+                        Repeater::make('link_tambahan')
                             ->label('File/Media Tambahan (Link)')
                             ->schema([
-                                Forms\Components\TextInput::make('url')
+                                TextInput::make('url')
                                     ->label('Link')
                                     ->placeholder('https://...')
                                     ->url(),
                             ])
                             ->addActionLabel('Tambah Link'),
                     ]),
-                Forms\Components\Select::make('akademisi_id')
+                Select::make('akademisi_id')
                     ->label('Akademisi')
                     ->searchable()
-                    ->options(fn () => \App\Models\Akademisi::pluck('name', 'id')),
-                Forms\Components\FileUpload::make('bukti_payment')
+                    ->options(fn () => Akademisi::pluck('name', 'id')),
+                FileUpload::make('bukti_payment')
                     ->label('Bukti Payment')
                     ->directory('order-bukti'),
-                Forms\Components\Textarea::make('note')
+                Textarea::make('note')
                     ->label('Note'),
+
+                // Payment section is now managed by PaymentsRelationManager (table with modal), not a Repeater.
             ]);
     }
 
@@ -219,37 +328,58 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nomer_nota')
+                TextColumn::make('nomer_nota')
                     ->label('Nomer Nota')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('nama')
-                    ->label('Nama Harga')
+                TextColumn::make('nama')
+                    ->label('Jokian')
                     ->getStateUsing(fn ($record) => $record->harga?->nama)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('customer_id')
+                TextColumn::make('customer_id')
                     ->label('Customer')
                     ->getStateUsing(fn ($record) => $record->customer?->name)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Status')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('prioritas')
+                TextColumn::make('status')
+                    ->label('Pengerjaan')
+                    ->sortable()
+                    ->color(fn ($state) => match (strtolower($state)) {
+                        'done' => 'success', // hijau
+                        'inprogress' => 'warning', // kuning
+                        'not started' => 'gray', // abu
+                        default => 'secondary',
+                    })
+                    ->badge(),
+                TextColumn::make('prioritas')
                     ->label('Prioritas')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status_payment')
+                    ->sortable()
+                    ->color(fn ($state) => match (strtolower($state)) {
+                        'urgent' => 'danger', // merah
+                        'medium' => 'warning', // kuning
+                        'low' => 'gray', // abu
+                        default => 'secondary',
+                    })
+                    ->badge(),
+                TextColumn::make('status_payment')
                     ->label('Status Payment')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('price')
+                    ->sortable()
+                    ->color(fn ($state) => match (strtolower($state)) {
+                        'lunas' => 'success', // hijau
+                        'dp' => 'warning', // kuning
+                        'belum' => 'danger', // merah
+                        default => 'secondary',
+                    })
+                    ->badge(),
+                TextColumn::make('price')
                     ->label('Price')
                     ->formatStateUsing(fn ($state) => 'Rp ' . number_format((int) $state, 0, '', '.'))
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Diubah')
                     ->dateTime()
                     ->sortable()
@@ -268,7 +398,7 @@ class OrderResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            OrderResource\RelationManagers\PaymentsRelationManager::class,
         ];
     }
 

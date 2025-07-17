@@ -26,6 +26,7 @@ class Order extends Model
         'link_tambahan',
         'bukti_payment',
         'note',
+        'amt_reff',
     ];
 
     protected $casts = [
@@ -41,5 +42,10 @@ class Order extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 }
