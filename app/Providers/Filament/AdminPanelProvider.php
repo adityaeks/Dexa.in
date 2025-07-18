@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use Filament\Http\Middleware\Authenticate;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
+use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
@@ -62,6 +63,15 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            // Tambahkan plugin Edit Profil paling bawah
+            // Tambahkan plugin Edit Profil paling bawah, tanpa setSort agar benar-benar di bawah
+            ->plugin(
+                FilamentEditProfilePlugin::make()
+                    ->setTitle('Edit Profil')
+                    ->setNavigationLabel('Edit Profil')
+                    ->setIcon('heroicon-o-user')
+                    ->shouldShowAvatarForm()
+            );
     }
 }
