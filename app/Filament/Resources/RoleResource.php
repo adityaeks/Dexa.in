@@ -27,7 +27,9 @@ class RoleResource extends Resource implements HasShieldPermissions
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?string $navigationGroup = 'User Management';
+    protected static ?string $navigationGroup = 'Manajemen Sistem';
+
+    protected static ?int $navigationSort = 2;
 
     public static function getPermissionPrefixes(): array
     {
@@ -174,9 +176,7 @@ class RoleResource extends Resource implements HasShieldPermissions
 
     public static function getNavigationGroup(): ?string
     {
-        return Utils::isResourceNavigationGroupEnabled()
-            ? __('filament-shield::filament-shield.nav.group')
-            : '';
+        return 'Manajemen Sistem';
     }
 
     public static function getNavigationLabel(): string
@@ -191,7 +191,7 @@ class RoleResource extends Resource implements HasShieldPermissions
 
     public static function getNavigationSort(): ?int
     {
-        return Utils::getResourceNavigationSort();
+        return static::$navigationSort;
     }
 
     public static function getSubNavigationPosition(): SubNavigationPosition

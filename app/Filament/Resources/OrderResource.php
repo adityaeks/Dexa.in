@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
 class OrderResource extends Resource
 {
@@ -399,6 +400,7 @@ class OrderResource extends Resource
     {
         return [
             OrderResource\RelationManagers\PaymentsRelationManager::class,
+            ActivitylogRelationManager::class,
         ];
     }
 

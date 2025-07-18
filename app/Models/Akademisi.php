@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Akademisi extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'name',
         'nomor',
@@ -39,5 +43,10 @@ class Akademisi extends Model
                 $akademisi->nomor = '+62' . $nomor;
             }
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->logAll();
     }
 }

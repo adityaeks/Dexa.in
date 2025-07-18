@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
 class HargaResource extends Resource
 {
@@ -119,7 +120,7 @@ class HargaResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ActivitylogRelationManager::class,
         ];
     }
 

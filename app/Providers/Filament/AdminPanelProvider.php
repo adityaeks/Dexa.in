@@ -55,6 +55,10 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
+                \Rmsramos\Activitylog\ActivitylogPlugin::make()
+                    ->navigationGroup('Manajemen Sistem')
+                    ->navigationSort(3)
+                    ->navigationIcon('heroicon-o-clock'),
             ])
             ->authMiddleware([
                 Authenticate::class,

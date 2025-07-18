@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use Illuminate\Support\Facades\Auth;
 
+use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
+
 class CustomerResource extends Resource
 {
     // Permission handled by policy/Filament Shield
@@ -114,7 +116,7 @@ class CustomerResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ActivitylogRelationManager::class,
         ];
     }
 

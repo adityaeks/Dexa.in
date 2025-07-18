@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
+use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
 class UserResource extends Resource implements HasShieldPermissions
 {
@@ -21,7 +22,9 @@ class UserResource extends Resource implements HasShieldPermissions
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationGroup = 'User Management';
+    protected static ?string $navigationGroup = 'Manajemen Sistem';
+
+    protected static ?int $navigationSort = 1;
 
     public static function getPermissionPrefixes(): array
     {
@@ -97,7 +100,7 @@ class UserResource extends Resource implements HasShieldPermissions
     public static function getRelations(): array
     {
         return [
-            //
+            ActivitylogRelationManager::class,
         ];
     }
 

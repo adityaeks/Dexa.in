@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Policies\RolePolicy;
 use Spatie\Permission\Models\Role;
+use Spatie\Activitylog\Models\Activity;
+use App\Policies\ActivityPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
         // Register policies
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
+        Gate::policy(Activity::class, ActivityPolicy::class);
 
         // Define super admin gate
         Gate::before(function ($user, $ability) {

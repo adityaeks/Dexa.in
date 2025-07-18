@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Customer extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'code',
         'name',
@@ -39,5 +43,10 @@ class Customer extends Model
 
         // Format dengan 3 digit
         return 'CUST#' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->logAll();
     }
 }
