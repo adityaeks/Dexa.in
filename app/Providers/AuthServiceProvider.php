@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Order;
+use App\Policies\OrderPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\Harga;
@@ -22,7 +24,7 @@ class AuthServiceProvider extends ServiceProvider
         Harga::class => HargaPolicy::class,
         Customer::class => CustomerPolicy::class,
         Akademisi::class => AkademisiPolicy::class,
-        \App\Models\Order::class => \App\Policies\OrderPolicy::class,
+        Order::class => OrderPolicy::class,
     ];
 
     /**

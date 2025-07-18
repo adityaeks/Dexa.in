@@ -19,6 +19,8 @@ class OrderResource extends Resource
     protected static ?string $navigationLabel = 'Order';
     protected static ?string $modelLabel = 'Order';
     protected static ?string $pluralModelLabel = 'Order';
+    protected static ?string $navigationGroup = 'Manajemen Order';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -389,7 +391,19 @@ class OrderResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->before(function ($record, $action) {
+                        if (!empty($record->payment_ids)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Order tidak bisa dihapus karena sudah ada payment!')
+                                ->danger()
+                                ->send();
+                            // Batalkan penghapusan
+                            $action->cancel();
+                            return false;
+                        }
+                        return true;
+                    }),
             ])
             ->bulkActions([
                 // Tidak ada bulk actions

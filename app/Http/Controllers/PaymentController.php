@@ -44,10 +44,12 @@ class PaymentController extends Controller
         // Create payment
         $payment = Payment::create($validated);
 
-        // Update amt_reff pada order terkait
+        // Update amt_reff dan payment_ids pada order terkait
         $order = Order::find($payment->order_id);
         if ($order) {
-            $order->amt_reff = (int) $order->amt_reff + (int) $payment->price_bayar;
+            $order->amt_reff = $order->payments()->sum('price_bayar');
+            // Simpan semua id payment ke kolom payment_ids (JSON)
+            $order->payment_ids = $order->payments()->pluck('id')->toArray();
             // Update status_payment otomatis
             if ($order->amt_reff == 0) {
                 $order->status_payment = 'belum';

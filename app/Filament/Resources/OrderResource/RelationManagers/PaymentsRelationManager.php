@@ -188,21 +188,29 @@ class PaymentsRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\DeleteAction::make()
-                    ->after(function ($record, $livewire) {
-                        $order = $record->order;
+                    ->after(function ($record) {
+                        $order = \App\Models\Order::find($record->order_id);
                         if ($order) {
-                            // Ambil payment terakhir setelah delete (exclude yang dihapus)
-                            $lastPayment = $order->payments()->where('id', '!=', $record->id)->latest('id')->first();
-                            $order->amt_reff = $lastPayment ? $lastPayment->price_bayar : 0;
+                            $amt_reff = $order->payments()->where('id', '!=', $record->id)->sum('price_bayar');
+                            $order->amt_reff = $amt_reff;
+                            // Update payment_ids (hapus id payment yang dihapus)
+                            $order->payment_ids = $order->payments()->where('id', '!=', $record->id)->pluck('id')->toArray();
+                            // Update status_payment otomatis
+                            if ($amt_reff == 0) {
+                                $order->status_payment = 'belum';
+                            } elseif ($amt_reff < $order->price) {
+                                $order->status_payment = 'DP';
+                            } elseif ($amt_reff == $order->price) {
+                                $order->status_payment = 'Lunas';
+                            }
                             $order->save();
-
-                            // Update price_sisa payment terakhir (jika ada)
+                            // Tidak menghapus update price_sisa payment terakhir (jika ada)
+                            $lastPayment = $order->payments()->where('id', '!=', $record->id)->latest('id')->first();
                             if ($lastPayment) {
                                 $lastPayment->price_sisa = $order->price - $lastPayment->price_bayar;
                                 $lastPayment->save();
                             }
                         }
-                        $livewire->redirect(request()->header('Referer') ?? url()->current());
                     }),
             ]);
     }

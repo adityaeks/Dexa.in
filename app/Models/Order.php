@@ -29,11 +29,13 @@ class Order extends Model
         'bukti_payment',
         'note',
         'amt_reff',
+        'payment_ids', // <--- tambahkan field payment_ids agar bisa diisi
     ];
 
     protected $casts = [
         'file_tambahan' => 'array',
         'link_tambahan' => 'array',
+        'payment_ids' => 'array',
     ];
 
     public function harga()
@@ -50,6 +52,12 @@ class Order extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    // Jika ingin relasi ke payment terakhir, gunakan accessor berikut (opsional)
+    // public function lastPayment()
+    // {
+    //     return $this->hasOne(Payment::class)->latestOfMany();
+    // }
 
     public function getActivitylogOptions(): LogOptions
     {
