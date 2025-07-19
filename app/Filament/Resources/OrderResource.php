@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\{Order, Harga, Customer, Akademisi};
 use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, Repeater, FileUpload, Textarea};
+use Filament\Tables\Tabs\Tab;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -16,31 +17,23 @@ use Filament\Widgets\Widget;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
-class OrderStatsOverview extends StatsOverviewWidget
-{
-    protected static ?string $model = Order::class;
-
-    protected function getStats(): array
-    {
-        $totalOrders = Order::count();
-        $doneOrders = Order::where('status', 'Done')->count();
-        $openOrders = Order::whereIn('status', ['Not started', 'Inprogress'])->count();
-
-        return [
-            Stat::make('Total Orders', $totalOrders)
-                ->icon('heroicon-o-clipboard-document-list'),
-            Stat::make('Order Selesai', $doneOrders)
-                ->icon('heroicon-o-check-circle'),
-            Stat::make('Order Belum Selesai', $openOrders)
-                ->icon('heroicon-o-clock'),
-        ];
-    }
-}
+// ...existing code...
+// OrderStatsOverview dipindahkan ke Widgets/OrderStatsOverview.php dan menggunakan Trend
 
 class OrderResource extends Resource
 {
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) \App\Models\Order::count();
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return 'warning'; // warna badge kuning seperti pada gambar
+    }
+
     protected static ?string $model = Order::class;
-    protected static ?string $navigationIcon = 'heroicon-o-receipt-refund';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel = 'Order';
     protected static ?string $modelLabel = 'Order';
     protected static ?string $pluralModelLabel = 'Order';
@@ -57,6 +50,7 @@ class OrderResource extends Resource
                             ->label('Jokian')
                             ->required()
                             ->searchable()
+                            ->multiple() // Memungkinkan memilih lebih dari satu jokian
                             ->options(fn () =>
                                 Harga::all()->mapWithKeys(function($harga) {
                                     $label = $harga->nama;
@@ -126,16 +120,17 @@ class OrderResource extends Resource
                             })
                             ->reactive()
                             ->afterStateUpdated(function ($state, $set) {
-                                $harga = Harga::find($state);
-                                $price = $harga?->harga ?? null;
-                                $set('price', $price === 0 ? null : number_format($price, 0, '', '.'));
-                                // price_dexain = 10% jika price <= 100000, 20% jika > 100000
-                                if ((int)$price <= 100000) {
-                                    $dexain = (int) round((int)$price * 0.1);
+                                // $state sekarang array of id harga
+                                $hargaList = Harga::whereIn('id', (array)$state)->get();
+                                $totalPrice = $hargaList->sum('harga');
+                                $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
+                                // price_dexain = 10% jika total <= 100000, 20% jika > 100000
+                                if ($totalPrice <= 100000) {
+                                    $dexain = (int) round($totalPrice * 0.1);
                                 } else {
-                                    $dexain = (int) round((int)$price * 0.2);
+                                    $dexain = (int) round($totalPrice * 0.2);
                                 }
-                                $akademisi = (int)$price - $dexain;
+                                $akademisi = $totalPrice - $dexain;
                                 $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                 $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
                             }),
@@ -368,7 +363,7 @@ class OrderResource extends Resource
                     ->sortable(),
                 TextColumn::make('nama')
                     ->label('Jokian')
-                    ->getStateUsing(fn ($record) => $record->harga?->nama)
+                    ->getStateUsing(fn ($record) => $record->label_jokian)
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Pengerjaan')
@@ -484,7 +479,7 @@ class OrderResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            OrderStatsOverview::class,
+            \App\Filament\Resources\OrderResource\Widgets\OrderStatsOverview::class,
         ];
     }
 }

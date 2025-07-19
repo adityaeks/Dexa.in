@@ -18,20 +18,23 @@ class CreateOrder extends CreateRecord
             $data['customer_code'] = $customer?->code;
         }
         $data['nomer_nota'] = $this->generateNomerNota();
-        // Pastikan price selalu terisi dari harga terkait
-        if (empty($data['price']) && !empty($data['nama'])) {
+        // Hitung total harga dari array id harga (multi-jokian)
+        $totalHarga = 0;
+        if (!empty($data['nama']) && is_array($data['nama'])) {
+            $totalHarga = Harga::whereIn('id', $data['nama'])->get()->sum('harga');
+        } elseif (!empty($data['nama'])) {
             $harga = Harga::find($data['nama']);
-            $data['price'] = $harga?->harga ?? 0;
+            $totalHarga = $harga?->harga ?? 0;
         }
+        $data['price'] = $totalHarga;
         // Hitung dan set price_dexain & price_akademisi di backend agar selalu tersimpan
-        $price = isset($data['price']) ? (int) $data['price'] : 0;
-        if ($price > 0) {
-            if ($price <= 100000) {
-                $dexain = (int) round($price * 0.1);
+        if ($totalHarga > 0) {
+            if ($totalHarga <= 100000) {
+                $dexain = (int) round($totalHarga * 0.1);
             } else {
-                $dexain = (int) round($price * 0.2);
+                $dexain = (int) round($totalHarga * 0.2);
             }
-            $akademisi = $price - $dexain;
+            $akademisi = $totalHarga - $dexain;
             $data['price_dexain'] = $dexain;
             $data['price_akademisi'] = $akademisi;
         } else {

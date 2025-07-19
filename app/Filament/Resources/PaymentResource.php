@@ -26,6 +26,7 @@ class PaymentResource extends Resource
             Forms\Components\Select::make('order_id')
                 ->label('Nota')
                 ->relationship('order', 'nomer_nota')
+                ->searchable()
                 ->required()
                 ->default(fn () => request('order_id'))
                 ->disabled(fn ($livewire) => request()->has('order_id'))
@@ -164,6 +165,13 @@ class PaymentResource extends Resource
             'index' => PaymentResource\Pages\ListPayments::route('/'),
             'create' => PaymentResource\Pages\CreatePayment::route('/create'),
             'edit' => PaymentResource\Pages\EditPayment::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            \App\Filament\Resources\PaymentResource\Widgets\PaymentStatsOverview::class,
         ];
     }
 }

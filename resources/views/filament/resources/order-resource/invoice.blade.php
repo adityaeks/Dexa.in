@@ -101,10 +101,19 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{ $record->harga?->nama ?? '-' }}</td>
-                <td>Rp {{ number_format((int) $record->price, 0, '', '.') }}</td>
-            </tr>
+            @if(is_array($record->nama) && count($record->nama))
+                @foreach(\App\Models\Harga::whereIn('id', $record->nama)->get() as $harga)
+                    <tr>
+                        <td>{{ $harga->nama }}{{ $harga->tingkat ? ' - ' . $harga->tingkat : '' }}</td>
+                        <td>Rp {{ number_format((int) $harga->harga, 0, '', '.') }}</td>
+                    </tr>
+                @endforeach
+            @else
+                <tr>
+                    <td>-</td>
+                    <td>Rp 0</td>
+                </tr>
+            @endif
         </tbody>
         <tfoot>
             <tr>

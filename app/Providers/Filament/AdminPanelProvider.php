@@ -42,6 +42,10 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
+                \App\Filament\Widgets\DashboardOverview::class,
+                \App\Filament\Widgets\OrdersPerMonthChart::class,
+                \App\Filament\Widgets\TotalCustomersChart::class,
+                // \App\Filament\Widgets\LatestOrdersTable::class, // dinonaktifkan
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -72,6 +76,7 @@ class AdminPanelProvider extends PanelProvider
                     ->setNavigationLabel('Edit Profil')
                     ->setIcon('heroicon-o-user')
                     ->shouldShowAvatarForm()
+                    ->setNavigationGroup('Manajemen Akun')
             );
     }
 }

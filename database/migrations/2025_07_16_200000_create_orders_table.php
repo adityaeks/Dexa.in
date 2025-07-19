@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('nama')->constrained('hargas');
+            $table->json('nama')->nullable();
             $table->string('nomer_nota')->unique();
             $table->foreignId('customer_id')->constrained('customers');
             $table->string('customer_code')->nullable(); // kode customer
