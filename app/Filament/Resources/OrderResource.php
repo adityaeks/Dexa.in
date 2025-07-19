@@ -12,6 +12,31 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
+use Filament\Widgets\Widget;
+use Filament\Widgets\StatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
+
+class OrderStatsOverview extends StatsOverviewWidget
+{
+    protected static ?string $model = Order::class;
+
+    protected function getStats(): array
+    {
+        $totalOrders = Order::count();
+        $doneOrders = Order::where('status', 'Done')->count();
+        $openOrders = Order::whereIn('status', ['Not started', 'Inprogress'])->count();
+
+        return [
+            Stat::make('Total Orders', $totalOrders)
+                ->icon('heroicon-o-clipboard-document-list'),
+            Stat::make('Order Selesai', $doneOrders)
+                ->icon('heroicon-o-check-circle'),
+            Stat::make('Order Belum Selesai', $openOrders)
+                ->icon('heroicon-o-clock'),
+        ];
+    }
+}
+
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
@@ -119,6 +144,7 @@ class OrderResource extends Resource
                             ->disabled()
                             ->dehydrated()
                             ->placeholder('Auto Generate'),
+                        // code tidak perlu di display di form
                     ]),
                 Grid::make(2)
                     ->schema([
@@ -161,6 +187,8 @@ class OrderResource extends Resource
                                 $nomor = $customer?->nomor ?? '';
                                 $nomor = ltrim($nomor, '0');
                                 $set('contact', $nomor);
+                                // Set kode customer ke field code
+                                $set('code', $customer?->code ?? null);
                             }),
                         Select::make('status')
                             ->label('Penegerjaan')
@@ -332,16 +360,15 @@ class OrderResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('nomer_nota')
-                    ->label('Nomer Nota')
+                    ->label('Nota')
                     ->searchable()
+                    ->sortable(),
+                TextColumn::make('customer_code')
+                    ->label('Customer')
                     ->sortable(),
                 TextColumn::make('nama')
                     ->label('Jokian')
                     ->getStateUsing(fn ($record) => $record->harga?->nama)
-                    ->sortable(),
-                TextColumn::make('customer_id')
-                    ->label('Customer')
-                    ->getStateUsing(fn ($record) => $record->customer?->name)
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Pengerjaan')
@@ -388,6 +415,22 @@ class OrderResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Status Pengerjaan')
+                    ->options([
+                        'Not started' => 'Not started',
+                        'Inprogress' => 'Inprogress',
+                        'Done' => 'Done',
+                    ]),
+                Tables\Filters\SelectFilter::make('prioritas')
+                    ->label('Prioritas')
+                    ->options([
+                        'low' => 'Low',
+                        'medium' => 'Medium',
+                        'urgent' => 'Urgent',
+                    ]),
+            ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
@@ -407,6 +450,11 @@ class OrderResource extends Resource
             ])
             ->bulkActions([
                 // Tidak ada bulk actions
+            ])
+            ->groups([
+                Tables\Grouping\Group::make('created_at')
+                    ->label('Order Date')
+                    ->getTitleFromRecordUsing(fn ($record) => $record->created_at ? \Carbon\Carbon::parse($record->created_at)->translatedFormat('F Y') : 'Tanpa Tanggal'),
             ]);
     }
 
@@ -424,6 +472,13 @@ class OrderResource extends Resource
             'index' => Pages\ListOrders::route('/'),
             'create' => Pages\CreateOrder::route('/create'),
             'edit' => Pages\EditOrder::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            OrderStatsOverview::class,
         ];
     }
 }

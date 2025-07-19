@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('nama')->constrained('hargas');
             $table->string('nomer_nota')->unique();
             $table->foreignId('customer_id')->constrained('customers');
+            $table->string('customer_code')->nullable(); // kode customer
             $table->enum('status', ['Not started', 'Inprogress', 'Done']);
             $table->enum('prioritas', ['low', 'medium', 'urgent'])->nullable();
             $table->enum('status_payment', ['belum', 'DP', 'Lunas'])->nullable();

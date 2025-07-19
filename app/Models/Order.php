@@ -15,6 +15,7 @@ class Order extends Model
         'nama',
         'nomer_nota',
         'customer_id',
+        'customer_code', // kode customer
         'status',
         'prioritas',
         'status_payment',
@@ -29,7 +30,7 @@ class Order extends Model
         'bukti_payment',
         'note',
         'amt_reff',
-        'payment_ids', // <--- tambahkan field payment_ids agar bisa diisi
+        'payment_ids',
     ];
 
     protected $casts = [

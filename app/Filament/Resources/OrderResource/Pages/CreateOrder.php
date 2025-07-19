@@ -12,6 +12,11 @@ class CreateOrder extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Set kode customer otomatis dari relasi customer
+        if (!empty($data['customer_id'])) {
+            $customer = \App\Models\Customer::find($data['customer_id']);
+            $data['customer_code'] = $customer?->code;
+        }
         $data['nomer_nota'] = $this->generateNomerNota();
         // Pastikan price selalu terisi dari harga terkait
         if (empty($data['price']) && !empty($data['nama'])) {
@@ -36,6 +41,10 @@ class CreateOrder extends CreateRecord
         // Set default status jika belum ada
         if (empty($data['status'])) {
             $data['status'] = 'Not started';
+        }
+        // Set default status_payment jika belum ada (dan pastikan selalu tersimpan di DB)
+        if (empty($data['status_payment'])) {
+            $data['status_payment'] = 'belum';
         }
         return $data;
     }

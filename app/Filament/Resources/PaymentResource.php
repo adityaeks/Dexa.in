@@ -24,7 +24,7 @@ class PaymentResource extends Resource
     {
         return $form->schema([
             Forms\Components\Select::make('order_id')
-                ->label('Order')
+                ->label('Nota')
                 ->relationship('order', 'nomer_nota')
                 ->required()
                 ->default(fn () => request('order_id'))
