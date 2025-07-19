@@ -433,6 +433,13 @@ class OrderResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                \Torgodly\Html2Media\Tables\Actions\Html2MediaAction::make('cetak_invoice')
+                    ->label('Cetak')
+                    ->icon('heroicon-o-printer')
+                    ->color('info')
+                    ->savePdf()
+                    ->filename(fn($record) => 'Invoice-' . ($record->nomer_nota ?? $record->id) . '.pdf')
+                    ->content(fn($record) => view('filament.resources.order-resource.invoice', ['record' => $record])),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
                     ->before(function ($record, $action) {
@@ -441,7 +448,6 @@ class OrderResource extends Resource
                                 ->title('Order tidak bisa dihapus karena sudah ada payment!')
                                 ->danger()
                                 ->send();
-                            // Batalkan penghapusan
                             $action->cancel();
                             return false;
                         }
