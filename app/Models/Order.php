@@ -49,12 +49,13 @@ class Order extends Model
         'price',
         'price_dexain',
         'price_akademisi',
-        'due_days',
+        'price_akademisi2',
+        'start_date',
+        'due_date',
         'contact',
         'akademisi_id',
         'file_tambahan',
         'link_tambahan',
-        'bukti_payment',
         'note',
         'amt_reff',
         'payment_ids',
@@ -65,6 +66,8 @@ class Order extends Model
         'file_tambahan' => 'array',
         'link_tambahan' => 'array',
         'payment_ids' => 'array',
+        'akademisi_id' => 'array',
+        'price_akademisi2' => 'array',
     ];
 
     // Relasi ke banyak Harga (multi-jokian)

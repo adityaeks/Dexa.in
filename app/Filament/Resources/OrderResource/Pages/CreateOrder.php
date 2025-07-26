@@ -2,9 +2,14 @@
 
 namespace App\Filament\Resources\OrderResource\Pages;
 
+
 use App\Filament\Resources\OrderResource;
 use App\Models\Harga;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+
 
 class CreateOrder extends CreateRecord
 {
@@ -15,7 +20,9 @@ class CreateOrder extends CreateRecord
         // Set kode customer otomatis dari relasi customer
         if (!empty($data['customer_id'])) {
             $customer = \App\Models\Customer::find($data['customer_id']);
-            $data['customer_code'] = $customer?->code;
+            if ($customer && $customer instanceof \App\Models\Customer) {
+                $data['customer_code'] = $customer->code;
+            }
         }
         $data['nomer_nota'] = $this->generateNomerNota();
         // Hitung total harga dari array id harga (multi-jokian)
@@ -49,6 +56,11 @@ class CreateOrder extends CreateRecord
         if (empty($data['status_payment'])) {
             $data['status_payment'] = 'belum';
         }
+        // Ubah agar field 'nama' berisi array nama harga, bukan id
+        if (!empty($data['nama']) && is_array($data['nama'])) {
+            $hargaList = \App\Models\Harga::whereIn('id', $data['nama'])->get();
+            $data['nama'] = $hargaList->pluck('nama')->toArray();
+        }
         return $data;
     }
 
@@ -67,5 +79,54 @@ class CreateOrder extends CreateRecord
         }
         $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
         return $prefix . $year . $newNumber;
+    }
+
+    protected function afterCreate(): void
+    {
+        $user = Auth::user();
+        Log::info('Filament Notification Debug', [
+            'user' => $user,
+            'user_id' => $user?->id,
+            'user_class' => $user ? get_class($user) : null,
+        ]);
+        Notification::make()
+            ->title('Order berhasil dibuat!')
+            ->success()
+            ->sendToDatabase($user);
+
+        // Logic membuat Bill otomatis
+        $order = $this->record;
+        if ($order) {
+            $akademisiIds = $order->akademisi_id ?: [];
+            // Ambil array price_akademisi2 (bisa json string atau array)
+            $priceAkademisi2 = $order->price_akademisi2;
+            if (is_string($priceAkademisi2)) {
+                $priceAkademisi2 = json_decode($priceAkademisi2, true);
+            }
+            $priceMap = [];
+            if (is_array($priceAkademisi2)) {
+                foreach ($priceAkademisi2 as $row) {
+                    if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                        $priceMap[$row['akademisi_id']] = $row['harga'];
+                    }
+                }
+            }
+            foreach (array_values($akademisiIds) as $i => $akademisiId) {
+                $akademisi = \App\Models\Akademisi::find($akademisiId);
+                $harga = $priceMap[$akademisiId] ?? 0;
+                \App\Models\Bill::create([
+                    'akademisi_id' => $akademisiId,
+                    'akademisi_name' => $akademisi?->name ?? '',
+                    'tr_code' => $order->nomer_nota,
+                    'price' => $harga,
+                    'price_order' => $order->price,
+                    'amt_reff' => 0,
+                    'status' => 'belum',
+                    'bukti_pembayaran' => null,
+                    'order_id' => $order->id,
+                    'seq' => $i + 1,
+                ]);
+            }
+        }
     }
 }

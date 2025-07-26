@@ -2,36 +2,28 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\OrderResource\Pages;
-use App\Models\{Order, Harga, Customer, Akademisi};
-use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, Repeater, FileUpload, Textarea};
-use Filament\Tables\Tabs\Tab;
+use App\Filament\Resources\OrderResource\{ Pages, RelationManagers\PaymentsRelationManager, Widgets\OrderStatsOverview };
+use App\Models\{ Order, Harga, Customer, Akademisi };
+use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, Repeater, FileUpload, Textarea };
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
-
-use Filament\Widgets\Widget;
-use Filament\Widgets\StatsOverviewWidget;
-use Filament\Widgets\StatsOverviewWidget\Stat;
+use Torgodly\Html2Media\Tables\Actions\Html2MediaAction;
+use Filament\Notifications\Notification;
+use Carbon\Carbon;
 
 // ...existing code...
 // OrderStatsOverview dipindahkan ke Widgets/OrderStatsOverview.php dan menggunakan Trend
 
 class OrderResource extends Resource
 {
-    public static function getNavigationBadge(): ?string
-    {
-        return (string) \App\Models\Order::count();
-    }
-
-    public static function getNavigationBadgeColor(): string|array|null
-    {
-        return 'warning'; // warna badge kuning seperti pada gambar
-    }
-
     protected static ?string $model = Order::class;
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel = 'Order';
@@ -103,6 +95,13 @@ class OrderResource extends Resource
                                                 'instansi' => 'Instansi',
                                             ])
                                             ->required(),
+
+                                        TextInput::make('qty')
+                                            ->label('Quantity')
+                                            ->numeric(),
+                                        Textarea::make('description')
+                                            ->label('Deskripsi')
+                                            ->rows(3),
                                     ]),
                             ])
                             ->createOptionUsing(function (array $data) {
@@ -141,8 +140,6 @@ class OrderResource extends Resource
                             ->placeholder('Auto Generate'),
                         // code tidak perlu di display di form
                     ]),
-                Grid::make(2)
-                    ->schema([
                         Select::make('customer_id')
                             ->label('Customer')
                             ->required()
@@ -159,16 +156,35 @@ class OrderResource extends Resource
                                 TextInput::make('nomor')
                                     ->label('Nomor')
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->reactive()
+                                    ->afterStateUpdated(function ($state, $set) {
+                                        // Jika user mengetik 08..., ubah ke +628...
+                                        if (preg_match('/^08/', $state)) {
+                                            $set('nomor', '+62' . substr($state, 1));
+                                        } elseif (preg_match('/^\+62/', $state)) {
+                                            $set('nomor', $state);
+                                        } else {
+                                            // Jika user mengetik tanpa 0 atau +62, tambahkan +62
+                                            $set('nomor', '+62' . ltrim($state, '0'));
+                                        }
+                                    }),
                                 Textarea::make('description')
                                     ->label('Deskripsi')
                                     ->rows(3),
                             ])
                             ->createOptionUsing(function (array $data) {
                                 // Simpan data Customer baru dan return id-nya
+                                $nomor = $data['nomor'] ?? '';
+                                // Normalisasi nomor: pastikan selalu +62 di depan
+                                if (preg_match('/^08/', $nomor)) {
+                                    $nomor = '+62' . substr($nomor, 1);
+                                } elseif (!preg_match('/^\+62/', $nomor)) {
+                                    $nomor = '+62' . ltrim($nomor, '0');
+                                }
                                 $customer = Customer::create([
                                     'name' => $data['name'],
-                                    'nomor' => $data['nomor'],
+                                    'nomor' => $nomor,
                                     'description' => $data['description'] ?? null,
                                 ]);
                                 return $customer->id;
@@ -185,8 +201,23 @@ class OrderResource extends Resource
                                 // Set kode customer ke field code
                                 $set('code', $customer?->code ?? null);
                             }),
+                        TextInput::make('contact')
+                            ->label('Contact')
+                            ->disabled()
+                            ->reactive()
+                            ->afterStateHydrated(function ($state, $set, $get) {
+                                // Isi contact otomatis dari customer
+                                $customerId = $get('customer_id');
+                                if ($customerId) {
+                                    $customer = Customer::find($customerId);
+                                    $nomor = $customer?->nomor ?? '';
+                                    // Hilangkan leading 0 jika ada
+                                    $nomor = ltrim($nomor, '0');
+                                    $set('contact', $nomor);
+                                }
+                            }),
                         Select::make('status')
-                            ->label('Penegerjaan')
+                            ->label('Pengerjaan')
                             ->required()
                             ->options([
                                 'Not started' => 'Not started',
@@ -194,9 +225,6 @@ class OrderResource extends Resource
                                 'Done' => 'Done',
                             ])
                             ->default('Not started'),
-                    ]),
-                Grid::make(2)
-                    ->schema([
                         Select::make('prioritas')
                             ->label('Prioritas')
                             ->required()
@@ -237,9 +265,6 @@ class OrderResource extends Resource
                                     $set('status_payment', 'Lunas');
                                 }
                             }),
-                    ]),
-                Grid::make(3)
-                    ->schema([
                         TextInput::make('price')
                             ->label('Price Normal')
                             ->required()
@@ -294,28 +319,148 @@ class OrderResource extends Resource
                             })
                             ->dehydrated(true)
                             ->disabled(),
-                    ]),
-                Grid::make(2)
-                    ->schema([
-                        DatePicker::make('due_days')
-                            ->label('Due Date'),
-                        TextInput::make('contact')
-                            ->label('Contact')
-                            ->prefix('+62')
-                            ->disabled()
+                        DatePicker::make('start_date')
+                            ->label('Tanggal Mulai')
+                            ->default(now()),
+                        DatePicker::make('due_date')
+                            ->label('Deadline'),
+                        Select::make('akademisi_id')
+                            ->label('Akademisi')
+                            ->searchable()
+                            ->multiple()
+                            ->options(fn () => Akademisi::pluck('name', 'id'))
+                            ->formatStateUsing(function ($state) {
+                                if (is_string($state)) {
+                                    $decoded = json_decode($state, true);
+                                    return is_array($decoded) ? $decoded : [];
+                                }
+                                return $state;
+                            })
                             ->reactive()
-                            ->afterStateHydrated(function ($state, $set, $get) {
-                                // Isi contact otomatis dari customer
-                                $customerId = $get('customer_id');
-                                if ($customerId) {
-                                    $customer = Customer::find($customerId);
-                                    $nomor = $customer?->nomor ?? '';
-                                    // Hilangkan leading 0 jika ada
-                                    $nomor = ltrim($nomor, '0');
-                                    $set('contact', $nomor);
+                            ->afterStateUpdated(function ($state, $set) {
+                                // Jika akademisi lebih dari 1, tampilkan field price2
+                                if (is_array($state) && count($state) > 1) {
+                                    $set('show_price2', true);
+                                } else {
+                                    $set('show_price2', false);
+                                    $set('price2', null);
                                 }
                             }),
-                    ]),
+                    // Hidden field untuk mengontrol visibility price2
+                    // Field harga per akademisi (dinamis jika akademisi > 1)
+                    Repeater::make('price_akademisi2')
+                        ->label(function ($get) {
+                            $total = (int) preg_replace('/[^0-9]/', '', $get('price_akademisi'));
+                            $rows = $get('price_akademisi2') ?? [];
+                            $terpakai = 0;
+                            foreach ($rows as $row) {
+                                if (is_array($row) && isset($row['harga'])) {
+                                    $terpakai += (int) preg_replace('/[^0-9]/', '', $row['harga']);
+                                }
+                            }
+                            $sisa = $total - $terpakai;
+                            $label = 'Harga per Akademisi';
+                            if ($total > 0) {
+                                $label .= ' (Sisa: Rp ' . number_format($sisa, 0, '', '.') . ')';
+                            }
+                            return $label;
+                        })
+                        ->schema([
+                            Select::make('akademisi_id')
+                                ->options(fn ($get) => \App\Models\Akademisi::whereIn('id', (array) $get('../../akademisi_id'))->pluck('name', 'id'))
+                                ->required()
+                                // ->hidden()
+                                ->disabled()
+                                ->dehydrated(true),
+                            TextInput::make('harga')
+                                ->label('Harga')
+                                ->required()
+                                ->prefix('Rp')
+                                ->live()
+                                ->afterStateUpdated(function ($state, $set) {
+                                    $number = preg_replace('/[^0-9]/', '', $state);
+                                    $set('harga', $number === '' ? null : number_format((int) $number, 0, '', '.'));
+                                })
+                                ->formatStateUsing(function ($state) {
+                                    if ($state === null || $state === '') return null;
+                                    $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
+                                    return number_format((int) $number, 0, '', '.');
+                                })
+                                ->dehydrateStateUsing(function ($state) {
+                                    return preg_replace('/[^0-9]/', '', $state);
+                                }),
+                        ])
+                        ->columns(2)
+                        ->default(function ($get) {
+                            $ids = (array) $get('akademisi_id');
+                            return collect($ids)->map(fn($id) => ['akademisi_id' => $id, 'harga' => null])->toArray();
+                        })
+                        ->formatStateUsing(function ($state, $get) {
+                            $akademisiIds = (array) $get('akademisi_id');
+                            $result = [];
+                            // Jika associative array ({"1":"5000","2":"4000"})
+                            if (is_array($state) && !empty($state) && array_values($state) !== $state) {
+                                foreach ($state as $id => $harga) {
+                                    $result[] = [
+                                        'akademisi_id' => $id,
+                                        'harga' => $harga,
+                                    ];
+                                }
+                                return $result;
+                            }
+                            // Jika array campur object/string
+                            if (is_array($state)) {
+                                foreach ($state as $i => $row) {
+                                    if (is_array($row) && isset($row['akademisi_id']) && isset($row['harga'])) {
+                                        $result[] = $row;
+                                    } elseif (is_array($row) && isset($row['harga'])) {
+                                        $result[] = [
+                                            'akademisi_id' => $akademisiIds[$i] ?? null,
+                                            'harga' => $row['harga'],
+                                        ];
+                                    } elseif (is_string($row) || is_numeric($row)) {
+                                        $result[] = [
+                                            'akademisi_id' => $akademisiIds[$i] ?? null,
+                                            'harga' => $row,
+                                        ];
+                                    }
+                                }
+                                return $result;
+                            }
+                            return [];
+                        })
+                        ->visible(fn ($get) => is_array($get('akademisi_id')) && count($get('akademisi_id')) > 1)
+                        ->reactive()
+                        ->afterStateHydrated(function ($state, $set, $get) {
+                            $ids = (array) $get('akademisi_id');
+                            $rows = collect($state ?? [])->keyBy('akademisi_id');
+                            $newRows = collect($ids)->map(fn($id) => [
+                                'akademisi_id' => $id,
+                                'harga' => $rows[$id]['harga'] ?? null,
+                            ])->values()->toArray();
+                            $set('price_akademisi2', $newRows);
+                        })
+                        ->afterStateUpdated(function ($state, $set, $get) {
+                            $ids = (array) $get('akademisi_id');
+                            $rows = collect($state ?? [])->keyBy('akademisi_id');
+                            $newRows = collect($ids)->map(fn($id) => [
+                                'akademisi_id' => $id,
+                                'harga' => $rows[$id]['harga'] ?? null,
+                            ])->values()->toArray();
+                            $set('price_akademisi2', $newRows);
+                        })
+                        ->dehydrateStateUsing(function ($state, $get) {
+                            $akademisiIds = (array) $get('akademisi_id');
+                            return collect($state)
+                                ->map(function($row, $i) use ($akademisiIds) {
+                                    return [
+                                        'akademisi_id' => $akademisiIds[$i] ?? null,
+                                        'harga' => is_array($row) ? ($row['harga'] ?? null) : $row,
+                                    ];
+                                })
+                                ->values()
+                                ->toArray();
+                        }),
                     Grid::make(2)
                     ->schema([
                         Repeater::make('file_tambahan')
@@ -336,15 +481,10 @@ class OrderResource extends Resource
                             ])
                             ->addActionLabel('Tambah Link'),
                     ]),
-                Select::make('akademisi_id')
-                    ->label('Akademisi')
-                    ->searchable()
-                    ->options(fn () => Akademisi::pluck('name', 'id')),
-                FileUpload::make('bukti_payment')
-                    ->label('Bukti Payment')
-                    ->directory('order-bukti'),
                 Textarea::make('note')
                     ->label('Note'),
+
+
 
                 // Payment section is now managed by PaymentsRelationManager (table with modal), not a Repeater.
             ]);
@@ -363,7 +503,12 @@ class OrderResource extends Resource
                     ->sortable(),
                 TextColumn::make('nama')
                     ->label('Jokian')
-                    ->getStateUsing(fn ($record) => $record->label_jokian)
+                    ->formatStateUsing(function ($state) {
+                        if (is_array($state)) {
+                            return implode(', ', $state);
+                        }
+                        return $state;
+                    })
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Pengerjaan')
@@ -399,6 +544,11 @@ class OrderResource extends Resource
                     ->label('Price')
                     ->formatStateUsing(fn ($state) => 'Rp ' . number_format((int) $state, 0, '', '.'))
                     ->sortable(),
+                TextColumn::make('price2')
+                    ->label('Price 2')
+                    ->formatStateUsing(fn ($state) => $state ? 'Rp ' . number_format((int) $state, 0, '', '.') : '-')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
@@ -411,14 +561,14 @@ class OrderResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->label('Status Pengerjaan')
                     ->options([
                         'Not started' => 'Not started',
                         'Inprogress' => 'Inprogress',
                         'Done' => 'Done',
                     ]),
-                Tables\Filters\SelectFilter::make('prioritas')
+                SelectFilter::make('prioritas')
                     ->label('Prioritas')
                     ->options([
                         'low' => 'Low',
@@ -427,19 +577,20 @@ class OrderResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                \Torgodly\Html2Media\Tables\Actions\Html2MediaAction::make('cetak_invoice')
+                ViewAction::make(),
+                Html2MediaAction::make('cetak_invoice')
                     ->label('Cetak')
                     ->icon('heroicon-o-printer')
                     ->color('info')
                     ->savePdf()
                     ->filename(fn($record) => 'Invoice-' . ($record->nomer_nota ?? $record->id) . '.pdf')
                     ->content(fn($record) => view('filament.resources.order-resource.invoice', ['record' => $record])),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()
+                EditAction::make()
+                    ->color('warning'),
+                DeleteAction::make()
                     ->before(function ($record, $action) {
                         if (!empty($record->payment_ids)) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Order tidak bisa dihapus karena sudah ada payment!')
                                 ->danger()
                                 ->send();
@@ -453,18 +604,22 @@ class OrderResource extends Resource
                 // Tidak ada bulk actions
             ])
             ->groups([
-                Tables\Grouping\Group::make('created_at')
+                Group::make('created_at')
                     ->label('Order Date')
-                    ->getTitleFromRecordUsing(fn ($record) => $record->created_at ? \Carbon\Carbon::parse($record->created_at)->translatedFormat('F Y') : 'Tanpa Tanggal'),
+                    ->getTitleFromRecordUsing(fn ($record) => $record->created_at ? Carbon::parse($record->created_at)->translatedFormat('F Y') : 'Tanpa Tanggal'),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            OrderResource\RelationManagers\PaymentsRelationManager::class,
+            PaymentsRelationManager::class,
             ActivitylogRelationManager::class,
         ];
+    }
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) Order::count();
     }
 
     public static function getPages(): array
@@ -479,7 +634,7 @@ class OrderResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            \App\Filament\Resources\OrderResource\Widgets\OrderStatsOverview::class,
+            OrderStatsOverview::class,
         ];
     }
 }

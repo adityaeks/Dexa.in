@@ -16,6 +16,8 @@ class Harga extends Model
         'tingkat',
         'harga',
         'tipe',
+        'qty',
+        'description',
     ];
 
     public function getActivitylogOptions(): LogOptions

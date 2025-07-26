@@ -34,26 +34,33 @@ class CustomerResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\TextInput::make('name')
+                    ->label('Nama Customer')
+                    ->required()
+                    ->maxLength(255),
                 Forms\Components\TextInput::make('code')
                     ->label('Kode Customer')
                     ->disabled()
                     ->dehydrated(false)
                     ->placeholder('Auto Generate'),
-
-                Forms\Components\TextInput::make('name')
-                    ->label('Nama Customer')
-                    ->required()
-                    ->maxLength(255),
-
                 Forms\Components\TextInput::make('nomor')
                     ->label('Nomor')
                     ->required()
-                    ->maxLength(255),
-
+                    ->maxLength(255)
+                    ->reactive()
+                    ->afterStateUpdated(function ($state, $set) {
+                        // Jika user mengetik 08..., ubah ke +628...
+                        if (preg_match('/^08/', $state)) {
+                            $set('nomor', '+62' . substr($state, 1));
+                        } elseif (preg_match('/^\+62/', $state)) {
+                            $set('nomor', $state);
+                        } else {
+                            // Jika user mengetik tanpa 0 atau +62, tambahkan +62
+                            $set('nomor', '+62' . ltrim($state, '0'));
+                        }
+                    }),
                 Forms\Components\Textarea::make('description')
-                    ->label('Deskripsi')
-                    ->columnSpanFull()
-                    ->rows(3),
+                    ->label('Deskripsi'),
             ]);
     }
 

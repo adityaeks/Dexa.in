@@ -5,6 +5,8 @@ use App\Filament\Resources\PaymentResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
+use Filament\Tables;
+use Livewire\Attributes\On;
 
 class ListPayments extends ListRecords
 {
@@ -26,11 +28,11 @@ class ListPayments extends ListRecords
         return [
             'all' => Tab::make('All'),
             'lunas' => Tab::make('Lunas')
-                ->modifyQueryUsing(fn ($query) => $query->where('payment', 'lunas')),
+                ->modifyQueryUsing(fn ($query) => $query->whereHas('order', fn($q) => $q->where('status_payment', 'lunas'))),
             'dp' => Tab::make('DP')
-                ->modifyQueryUsing(fn ($query) => $query->where('payment', 'dp')),
+                ->modifyQueryUsing(fn ($query) => $query->whereHas('order', fn($q) => $q->where('status_payment', 'dp'))),
             'belum' => Tab::make('Belum')
-                ->modifyQueryUsing(fn ($query) => $query->where('payment', 'belum')),
+                ->modifyQueryUsing(fn ($query) => $query->whereHas('order', fn($q) => $q->where('status_payment', 'belum'))),
         ];
     }
 }

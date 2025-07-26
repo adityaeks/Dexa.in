@@ -72,6 +72,11 @@ class HargaResource extends Resource
                         'instansi' => 'Instansi',
                     ])
                     ->required(),
+                Forms\Components\TextInput::make('qty')
+                    ->label('Quantity')
+                    ->numeric(),
+                Forms\Components\Textarea::make('description')
+                    ->label('Deskripsi'),
             ]);
     }
 
@@ -96,6 +101,9 @@ class HargaResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('tipe')
                     ->label('Tipe')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('description')
+                    ->label('Deskripsi')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')

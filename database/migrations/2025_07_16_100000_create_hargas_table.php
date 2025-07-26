@@ -14,6 +14,8 @@ return new class extends Migration
             $table->enum('tingkat', ['low', 'medium', 'high']);
             $table->unsignedBigInteger('harga');
             $table->enum('tipe', ['pendidikan', 'instansi']);
+            $table->unsignedInteger('qty')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
