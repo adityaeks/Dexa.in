@@ -3,17 +3,16 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AkademisiResource\Pages;
-use App\Filament\Resources\AkademisiResource\RelationManagers;
 use App\Models\Akademisi;
-use Filament\Forms;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-
-use Illuminate\Support\Facades\Auth;
 
 use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
@@ -34,17 +33,17 @@ class AkademisiResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->label('Nama')
                     ->required()
                     ->maxLength(255),
 
-                Forms\Components\TextInput::make('nomor')
+                TextInput::make('nomor')
                     ->label('Nomor Telepon')
                     ->required()
                     ->maxLength(255)
                     ->prefix('+62')
-                    ->placeholder('contoh: 812345678')
+                    ->placeholder('812345678')
                     ->dehydrateStateUsing(function ($state) {
                         // Saat menyimpan, pastikan ada +62
                         if (!empty($state) && !str_starts_with($state, '+62')) {
@@ -61,17 +60,21 @@ class AkademisiResource extends Resource
                         return $state;
                     }),
 
-                Forms\Components\TextInput::make('jurusan')
+                TextInput::make('jurusan')
                     ->label('Jurusan')
                     ->required()
                     ->maxLength(255),
 
-                Forms\Components\TextInput::make('asal_kampus')
+                TextInput::make('asal_kampus')
                     ->label('Asal Kampus')
                     ->required()
                     ->maxLength(255),
 
-                Forms\Components\TagsInput::make('minat')
+                TextInput::make('rekening')
+                    ->label('Rekening')
+                    ->placeholder('Bank - A/N - No rekening')
+                    ->maxLength(255),
+                TagsInput::make('minat')
                     ->label('Minat')
                     ->separator(',')
                     ->placeholder('Ketik minat dan tekan Enter')
@@ -83,91 +86,53 @@ class AkademisiResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('Nama')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('nomor')
+                    ->searchable(),
+                TextColumn::make('nomor')
                     ->label('Nomor Telepon')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('jurusan')
+                    ->searchable(),
+                TextColumn::make('jurusan')
                     ->label('Jurusan')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('asal_kampus')
+                    ->searchable(),
+                TextColumn::make('asal_kampus')
                     ->label('Asal Kampus')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('minat')
-                    ->label('Minat')
-                    ->formatStateUsing(function ($state) {
-                        if (is_array($state) && !empty($state)) {
-                            return collect($state)->take(3)->implode(', ') .
-                                   (count($state) > 3 ? ' +' . (count($state) - 3) . ' lainnya' : '');
-                        }
-                        if (is_string($state) && !empty($state)) {
-                            // Jika tersimpan sebagai string JSON, parse dulu
-                            $decoded = json_decode($state, true);
-                            if (is_array($decoded) && !empty($decoded)) {
-                                return collect($decoded)->take(3)->implode(', ') .
-                                       (count($decoded) > 3 ? ' +' . (count($decoded) - 3) . ' lainnya' : '');
-                            }
-                            return $state;
-                        }
-                        return '-';
-                    })
-                    ->tooltip(function ($record) {
-                        $minat = $record->minat;
-                        if (is_array($minat) && !empty($minat)) {
-                            return implode(', ', $minat);
-                        }
-                        if (is_string($minat) && !empty($minat)) {
-                            $decoded = json_decode($minat, true);
-                            if (is_array($decoded) && !empty($decoded)) {
-                                return implode(', ', $decoded);
-                            }
-                            return $minat;
-                        }
-                        return null;
-                    }),
-
-                Tables\Columns\TextColumn::make('created_at')
+                    ->searchable(),
+                TextColumn::make('rekening')
+                    ->label('Rekening')
+                    ->searchable(),
+                TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Diubah')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('jurusan')
+                SelectFilter::make('jurusan')
                     ->label('Filter Jurusan')
                     ->options(function () {
-                        return \App\Models\Akademisi::distinct('jurusan')
+                        return Akademisi::distinct('jurusan')
                             ->pluck('jurusan', 'jurusan')
                             ->toArray();
                     }),
 
-                Tables\Filters\SelectFilter::make('asal_kampus')
+                SelectFilter::make('asal_kampus')
                     ->label('Filter Kampus')
                     ->options(function () {
-                        return \App\Models\Akademisi::distinct('asal_kampus')
+                        return Akademisi::distinct('asal_kampus')
                             ->pluck('asal_kampus', 'asal_kampus')
                             ->toArray();
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
                 // Tidak ada bulk actions - tidak ada selection checkbox

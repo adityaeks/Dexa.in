@@ -17,6 +17,7 @@ return new class extends Migration
             $table->enum('status', ['Not started', 'Inprogress', 'Done']);
             $table->enum('prioritas', ['low', 'medium', 'urgent'])->nullable();
             $table->enum('status_payment', ['belum', 'DP', 'Lunas'])->nullable();
+            $table->unsignedInteger('qty')->nullable();
             $table->unsignedBigInteger('price');
             $table->unsignedBigInteger('amt_reff')->nullable();
             $table->unsignedBigInteger('price_dexain')->nullable();

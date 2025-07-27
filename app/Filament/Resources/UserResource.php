@@ -3,17 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
-use Filament\Forms;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Hash;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Columns\TextColumn;
 use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
 class UserResource extends Resource implements HasShieldPermissions
@@ -42,20 +43,20 @@ class UserResource extends Resource implements HasShieldPermissions
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('email')
+                TextInput::make('email')
                     ->email()
                     ->required()
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
-                Forms\Components\TextInput::make('password')
+                TextInput::make('password')
                     ->password()
                     ->required(fn (string $operation): bool => $operation === 'create')
                     ->maxLength(255)
                     ->dehydrated(fn ($state) => filled($state)),
-                Forms\Components\Select::make('roles')
+                Select::make('roles')
                     ->relationship('roles', 'name')
                     ->multiple()
                     ->preload()
@@ -69,17 +70,17 @@ class UserResource extends Resource implements HasShieldPermissions
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('email')->searchable(),
-                Tables\Columns\TextColumn::make('roles.name')
+                TextColumn::make('name')->searchable(),
+                TextColumn::make('email')->searchable(),
+                TextColumn::make('roles.name')
                     ->badge()
                     ->separator(',')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -88,11 +89,11 @@ class UserResource extends Resource implements HasShieldPermissions
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

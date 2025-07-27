@@ -3,12 +3,17 @@
 namespace App\Filament\Resources;
 
 use App\Models\Payment;
-use Filament\Forms;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Filters\SelectFilter;
 
 class PaymentResource extends Resource
 {
@@ -23,7 +28,7 @@ class PaymentResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('order_id')
+            Select::make('order_id')
                 ->label('Nota')
                 ->relationship('order', 'nomer_nota')
                 ->searchable()
@@ -45,7 +50,7 @@ class PaymentResource extends Resource
                         $set('price_sisa', null);
                     }
                 }),
-            Forms\Components\Select::make('payment')
+            Select::make('payment')
                 ->label('Metode Pembayaran')
                 ->options([
                     'bri' => 'BRI',
@@ -58,7 +63,7 @@ class PaymentResource extends Resource
                     'seabank' => 'SeaBank',
                 ])
                 ->required(),
-            Forms\Components\TextInput::make('price_normal')
+            TextInput::make('price_normal')
                 ->label('Price Normal (Sebelum Bayar)')
                 ->prefix('Rp')
                 ->disabled()
@@ -71,7 +76,7 @@ class PaymentResource extends Resource
                 ->dehydrateStateUsing(function ($state) {
                     return preg_replace('/[^0-9]/', '', $state);
                 }),
-            Forms\Components\TextInput::make('price_bayar')
+            TextInput::make('price_bayar')
                 ->label('Harga Bayar')
                 ->required()
                 ->prefix('Rp')
@@ -83,7 +88,7 @@ class PaymentResource extends Resource
                 ->dehydrateStateUsing(function ($state) {
                     return preg_replace('/[^0-9]/', '', $state);
                 }),
-            Forms\Components\TextInput::make('price_sisa')
+            TextInput::make('price_sisa')
                 ->label('Sisa Bayar')
                 ->prefix('Rp')
                 ->disabled()
@@ -92,7 +97,7 @@ class PaymentResource extends Resource
                     $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
                     return number_format((int) $number, 0, '', '.');
                 }),
-            Forms\Components\FileUpload::make('bukti_pembayaran')
+            FileUpload::make('bukti_pembayaran')
                 ->label('Bukti Pembayaran')
                 ->directory('payment-bukti')
                 ->required(false),
@@ -120,7 +125,7 @@ class PaymentResource extends Resource
                 TextColumn::make('price_sisa')->label('Sisa Bayar')->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('order_status_payment')
+                SelectFilter::make('order_status_payment')
                     ->label('Status Bayar')
                     ->options([
                         'lunas' => 'Lunas',
@@ -136,8 +141,8 @@ class PaymentResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()
+                EditAction::make(),
+                DeleteAction::make()
                     ->after(function ($record) {
                         $order = \App\Models\Order::find($record->order_id);
                         if ($order) {

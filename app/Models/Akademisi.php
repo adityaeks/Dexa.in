@@ -16,6 +16,7 @@ class Akademisi extends Model
         'jurusan',
         'asal_kampus',
         'minat',
+        'rekening'
     ];
 
     protected $casts = [

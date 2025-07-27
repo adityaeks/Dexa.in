@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('nomor');
             $table->string('jurusan');
             $table->string('asal_kampus');
+            $table->string('rekening')->nullable();
             $table->json('minat')->nullable(); // Untuk menyimpan tags
             $table->timestamps();
         });

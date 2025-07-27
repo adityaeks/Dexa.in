@@ -3,17 +3,17 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillResource\Pages;
-use App\Filament\Resources\BillResource\RelationManagers;
 use App\Models\Bill;
-use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class BillResource extends Resource
 {
@@ -28,11 +28,11 @@ class BillResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('tr_code')
+                TextInput::make('tr_code')
                     ->label('Kode Transaksi (Nomer Nota)')
                     ->disabled()
                     ->dehydrated(),
-                Forms\Components\Select::make('akademisi_id')
+                Select::make('akademisi_id')
                     ->label('Akademisi')
                     ->relationship('akademisi', 'name')
                     ->required()
@@ -43,7 +43,7 @@ class BillResource extends Resource
                         $akademisi = \App\Models\Akademisi::find($state);
                         $set('akademisi_name', $akademisi?->name ?? '');
                     }),
-                Forms\Components\TextInput::make('price')
+                TextInput::make('price')
                     ->label('Price Akademisi')
                     ->prefix('Rp')
                     ->numeric()
@@ -62,7 +62,7 @@ class BillResource extends Resource
                     ->dehydrateStateUsing(function ($state) {
                         return preg_replace('/[^0-9]/', '', $state);
                     }),
-                Forms\Components\TextInput::make('amt_reff')
+                TextInput::make('amt_reff')
                     ->label('Bayar')
                     ->prefix('Rp')
                     ->required()
@@ -91,7 +91,7 @@ class BillResource extends Resource
                     ->dehydrateStateUsing(function ($state) {
                         return preg_replace('/[^0-9]/', '', $state);
                     }),
-                Forms\Components\Select::make('status')
+                Select::make('status')
                     ->label('Status')
                     ->options([
                         'belum' => 'Belum',
@@ -139,34 +139,29 @@ class BillResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('seq')->label('No'),
-                Tables\Columns\TextColumn::make('tr_code')->label('NOTA'),
-                Tables\Columns\TextColumn::make('akademisi.name')->label('Akademisi'),
-                Tables\Columns\TextColumn::make('price')
+                TextColumn::make('seq')->label('No'),
+                TextColumn::make('tr_code')->label('NOTA'),
+                TextColumn::make('akademisi.name')->label('Akademisi'),
+                TextColumn::make('price')
                     ->label('Price Akademisi')
                     ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                Tables\Columns\TextColumn::make('belum_dibayar')
+                TextColumn::make('belum_dibayar')
                     ->label('Belum Dibayar')
                     ->getStateUsing(fn($record) => (int)$record->price - (int)$record->amt_reff)
                     ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                Tables\Columns\TextColumn::make('amt_reff')
+                TextColumn::make('amt_reff')
                     ->label('Dibayar')
                     ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                    // ->summarize(
-                    //     Tables\Columns\Summarizers\Sum::make()
-                    //         ->label('Sum')
-                    //         ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.'))
-                    // ),
-                Tables\Columns\TextColumn::make('status')->label('Status')->badge()->color(fn($state) => match($state) {
+                TextColumn::make('status')->label('Status')->badge()->color(fn($state) => match($state) {
                     'lunas' => 'success', 'dp' => 'warning', 'belum' => 'danger', default => 'secondary',
                 }),
-                Tables\Columns\TextColumn::make('created_at')->label('Dibuat')->dateTime()->sortable(),
+                TextColumn::make('created_at')->label('Dibuat')->dateTime()->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             // ->bulkActions([
             //     Tables\Actions\BulkActionGroup::make([
@@ -174,10 +169,10 @@ class BillResource extends Resource
             //     ]),
             // ])
             ->groups([
-                \Filament\Tables\Grouping\Group::make('tr_code')
+                Group::make('tr_code')
                     ->label('Nomer Nota')
                     ->getTitleFromRecordUsing(function ($record) {
-                        $totalBelumDibayar = \App\Models\Bill::where('tr_code', $record->tr_code)
+                        $totalBelumDibayar = Bill::where('tr_code', $record->tr_code)
                             ->get()
                             ->sum(function ($bill) {
                                 return (int)$bill->price - (int)$bill->amt_reff;

@@ -4,12 +4,15 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\HargaResource\Pages;
 use App\Models\Harga;
-use Filament\Forms;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Columns\TextColumn;
 use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
 class HargaResource extends Resource
@@ -24,7 +27,7 @@ class HargaResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nama')
+                TextInput::make('nama')
                     ->label('Nama')
                     ->required()
                     ->unique(ignoreRecord: true, table: 'hargas', column: 'nama')
@@ -33,7 +36,7 @@ class HargaResource extends Resource
                             ])
                     ->maxLength(255),
 
-                Forms\Components\Select::make('tingkat')
+                Select::make('tingkat')
                     ->label('Tingkat')
                     ->options([
                         'low' => 'Low',
@@ -42,7 +45,7 @@ class HargaResource extends Resource
                     ])
                     ->required(),
 
-                Forms\Components\TextInput::make('harga')
+                TextInput::make('harga')
                     ->label('Harga')
                     ->required()
                     ->prefix('Rp')
@@ -65,17 +68,17 @@ class HargaResource extends Resource
                         return preg_replace('/[^0-9]/', '', $state);
                     }),
 
-                Forms\Components\Select::make('tipe')
+                Select::make('tipe')
                     ->label('Tipe')
                     ->options([
                         'pendidikan' => 'Pendidikan',
                         'instansi' => 'Instansi',
                     ])
                     ->required(),
-                Forms\Components\TextInput::make('qty')
+                TextInput::make('qty')
                     ->label('Quantity')
                     ->numeric(),
-                Forms\Components\Textarea::make('description')
+                Textarea::make('description')
                     ->label('Deskripsi'),
             ]);
     }
@@ -84,14 +87,14 @@ class HargaResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nama')
+                TextColumn::make('nama')
                     ->label('Nama')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('tingkat')
+                TextColumn::make('tingkat')
                     ->label('Tingkat')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('harga')
+                TextColumn::make('harga')
                     ->label('Harga')
                     ->sortable()
                     ->formatStateUsing(function ($state) {
@@ -99,26 +102,26 @@ class HargaResource extends Resource
                         $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
                         return 'Rp ' . number_format((int) $number, 0, '', '.');
                     }),
-                Tables\Columns\TextColumn::make('tipe')
+                TextColumn::make('tipe')
                     ->label('Tipe')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('description')
+                TextColumn::make('description')
                     ->label('Deskripsi')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Diubah')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
                 // Tidak ada bulk actions

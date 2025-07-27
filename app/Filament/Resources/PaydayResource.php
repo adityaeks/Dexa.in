@@ -5,13 +5,15 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PaydayResource\Pages;
 use App\Filament\Resources\PaydayResource\RelationManagers;
 use App\Models\Payday;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Columns\TextColumn;
 
 class PaydayResource extends Resource
 {
@@ -28,7 +30,7 @@ class PaydayResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('order_id')
+                Select::make('order_id')
                     ->label('Order (Nota)')
                     ->relationship('order', 'tr_code')
                     ->required()
@@ -37,11 +39,11 @@ class PaydayResource extends Resource
                         $order = \App\Models\Order::find($state);
                         $set('tr_code', $order?->tr_code ?? '');
                     }),
-                Forms\Components\TextInput::make('tr_code')
+                TextInput::make('tr_code')
                     ->label('Kode Transaksi (tr_code)')
                     ->disabled()
                     ->dehydrated(),
-                Forms\Components\Select::make('akademisi_id')
+                Select::make('akademisi_id')
                     ->label('Akademisi')
                     ->relationship('akademisi', 'name')
                     ->required()
@@ -50,15 +52,15 @@ class PaydayResource extends Resource
                         $akademisi = \App\Models\Akademisi::find($state);
                         $set('akademisi_name', $akademisi?->name ?? '');
                     }),
-                Forms\Components\TextInput::make('akademisi_name')
+                TextInput::make('akademisi_name')
                     ->label('Nama Akademisi')
                     ->disabled()
                     ->dehydrated(),
-                Forms\Components\TextInput::make('price_base')
+                TextInput::make('price_base')
                     ->label('Harga Dasar')
                     ->numeric()
                     ->required(),
-                Forms\Components\TextInput::make('price')
+                TextInput::make('price')
                     ->label('Harga')
                     ->numeric()
                     ->required(),
@@ -69,22 +71,22 @@ class PaydayResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('order.tr_code')->label('Nota'),
-                Tables\Columns\TextColumn::make('tr_code')->label('Kode Transaksi'),
-                Tables\Columns\TextColumn::make('akademisi.name')->label('Akademisi'),
-                Tables\Columns\TextColumn::make('akademisi_name')->label('Nama Akademisi'),
-                Tables\Columns\TextColumn::make('price_base')->label('Harga Dasar')->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                Tables\Columns\TextColumn::make('price')->label('Harga')->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
+                TextColumn::make('order.tr_code')->label('Nota'),
+                TextColumn::make('tr_code')->label('Kode Transaksi'),
+                TextColumn::make('akademisi.name')->label('Akademisi'),
+                TextColumn::make('akademisi_name')->label('Nama Akademisi'),
+                TextColumn::make('price_base')->label('Harga Dasar')->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
+                TextColumn::make('price')->label('Harga')->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                DeleteBulkAction::make(),
                 ]),
             ]);
     }

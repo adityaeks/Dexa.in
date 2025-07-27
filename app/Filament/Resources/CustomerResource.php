@@ -3,17 +3,19 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerResource\Pages;
-use App\Filament\Resources\CustomerResource\RelationManagers;
 use App\Models\Customer;
-use Filament\Forms;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-use Illuminate\Support\Facades\Auth;
 
 use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
 
@@ -34,16 +36,16 @@ class CustomerResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->label('Nama Customer')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('code')
+                TextInput::make('code')
                     ->label('Kode Customer')
                     ->disabled()
                     ->dehydrated(false)
                     ->placeholder('Auto Generate'),
-                Forms\Components\TextInput::make('nomor')
+                TextInput::make('nomor')
                     ->label('Nomor')
                     ->required()
                     ->maxLength(255)
@@ -59,7 +61,7 @@ class CustomerResource extends Resource
                             $set('nomor', '+62' . ltrim($state, '0'));
                         }
                     }),
-                Forms\Components\Textarea::make('description')
+                Textarea::make('description')
                     ->label('Deskripsi'),
             ]);
     }
@@ -68,22 +70,22 @@ class CustomerResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('code')
+                TextColumn::make('code')
                     ->label('Kode Customer')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('Nama Customer')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('nomor')
+                TextColumn::make('nomor')
                     ->label('Nomor')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('description')
+                TextColumn::make('description')
                     ->label('Deskripsi')
                     ->limit(50)
                     ->tooltip(function (Tables\Columns\TextColumn $column): ?string {
@@ -94,13 +96,13 @@ class CustomerResource extends Resource
                         return $state;
                     }),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Diubah')
                     ->dateTime()
                     ->sortable()
@@ -110,12 +112,12 @@ class CustomerResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

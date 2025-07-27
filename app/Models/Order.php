@@ -59,6 +59,7 @@ class Order extends Model
         'note',
         'amt_reff',
         'payment_ids',
+        'qty',
     ];
 
     protected $casts = [
