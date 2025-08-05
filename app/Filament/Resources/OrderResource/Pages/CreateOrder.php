@@ -33,6 +33,13 @@ class CreateOrder extends CreateRecord
             $harga = Harga::find($data['nama']);
             $totalHarga = $harga?->harga ?? 0;
         }
+
+        // Multiply by qty if qty is filled
+        $qty = (int) ($data['qty'] ?? 1);
+        if ($qty > 0) {
+            $totalHarga = $totalHarga * $qty;
+        }
+
         $data['price'] = $totalHarga;
         // Hitung dan set price_dexain & price_akademisi di backend agar selalu tersimpan
         if ($totalHarga > 0) {
@@ -56,11 +63,8 @@ class CreateOrder extends CreateRecord
         if (empty($data['status_payment'])) {
             $data['status_payment'] = 'belum';
         }
-        // Ubah agar field 'nama' berisi array nama harga, bukan id
-        if (!empty($data['nama']) && is_array($data['nama'])) {
-            $hargaList = \App\Models\Harga::whereIn('id', $data['nama'])->get();
-            $data['nama'] = $hargaList->pluck('nama')->toArray();
-        }
+        // Keep nama as array of IDs, don't convert to names
+        // This ensures proper calculation in the form
         return $data;
     }
 

@@ -95,10 +95,6 @@ class OrderResource extends Resource
                                                 'instansi' => 'Instansi',
                                             ])
                                             ->required(),
-
-                                        TextInput::make('qty')
-                                            ->label('Quantity')
-                                            ->numeric(),
                                         Textarea::make('description')
                                             ->label('Deskripsi')
                                             ->rows(3),
@@ -112,16 +108,24 @@ class OrderResource extends Resource
                                     'harga' => preg_replace('/[^0-9]/', '', $data['harga']),
                                     'tipe' => $data['tipe'],
                                 ]);
-                                return $harga->id;
+                                return $harga->id; // Return ID, not nama
                             })
                             ->createOptionAction(function ($action) {
                                 $action->modalHeading('Tambah Harga Baru');
                             })
                             ->reactive()
-                            ->afterStateUpdated(function ($state, $set) {
+                            ->dehydrated(true)
+                            ->afterStateUpdated(function ($state, $set, $get) {
                                 // $state sekarang array of id harga
                                 $hargaList = Harga::whereIn('id', (array)$state)->get();
                                 $totalPrice = $hargaList->sum('harga');
+
+                                // Multiply by qty if qty is filled
+                                $qty = (int) $get('qty');
+                                if ($qty > 0) {
+                                    $totalPrice = $totalPrice * $qty;
+                                }
+
                                 $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
                                 // price_dexain = 10% jika total <= 100000, 20% jika > 100000
                                 if ($totalPrice <= 100000) {
@@ -132,12 +136,51 @@ class OrderResource extends Resource
                                 $akademisi = $totalPrice - $dexain;
                                 $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                 $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
+
+
                             }),
                         TextInput::make('nomer_nota')
                             ->label('Nomer Nota')
                             ->disabled()
+                            ->hidden()
                             ->dehydrated()
                             ->placeholder('Auto Generate'),
+                                                TextInput::make('qty')
+                            ->label('Jumlah')
+                            ->placeholder('Untuk Jokian Parafrase dll')
+                            ->numeric()
+                            ->minValue(1)
+                            ->live()
+                            ->dehydrated(true)
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Recalculate price when qty changes
+                                $namaIds = (array) $get('nama');
+                                if (!empty($namaIds)) {
+                                    $hargaList = Harga::whereIn('id', $namaIds)->get();
+                                    $totalPrice = $hargaList->sum('harga');
+
+                                    // Multiply by qty if qty is filled
+                                    $qty = (int) $state;
+                                    if ($qty > 0) {
+                                        $totalPrice = $totalPrice * $qty;
+                                    }
+
+                                    $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
+
+                                    // Calculate price_dexain and price_akademisi
+                                    if ($totalPrice <= 100000) {
+                                        $dexain = (int) round($totalPrice * 0.1);
+                                    } else {
+                                        $dexain = (int) round($totalPrice * 0.2);
+                                    }
+                                    $akademisi = $totalPrice - $dexain;
+                                    $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
+                                    $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
+
+
+                                }
+                            }),
+
                         // code tidak perlu di display di form
                     ]),
                         Select::make('customer_id')
@@ -266,32 +309,27 @@ class OrderResource extends Resource
                                 }
                             }),
                         TextInput::make('price')
-                            ->label('Price Normal')
+                            ->label(function ($get) {
+                                $qty = (int) $get('qty');
+                                $label = 'Price Normal';
+                                if ($qty > 1) {
+                                    $label .= " (Qty: {$qty})";
+                                }
+                                return $label;
+                            })
                             ->required()
                             ->prefix('Rp')
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, $set) {
-                                // price_dexain = 10% jika price <= 100000, 20% jika > 100000
-                                $price = (int) preg_replace('/[^0-9]/', '', $state);
-                                if ($price <= 100000) {
-                                    $dexain = (int) round($price * 0.1);
-                                } else {
-                                    $dexain = (int) round($price * 0.2);
-                                }
-                                $akademisi = $price - $dexain;
-                                // Format IDR langsung saat onchange
-                                $set('price', $price === 0 ? null : number_format($price, 0, '', '.'));
-                                $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
-                                $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
-                            })
                             ->formatStateUsing(function ($state) {
                                 if ($state === null || $state === '') return null;
                                 $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
                                 return number_format((int) $number, 0, '', '.');
                             })
                             ->dehydrateStateUsing(function ($state) {
-                                return preg_replace('/[^0-9]/', '', $state);
+                                // Pastikan yang tersimpan adalah angka murni tanpa format
+                                if ($state === null || $state === '') return null;
+                                return (int) preg_replace('/[^0-9]/', '', $state);
                             })
+                            ->dehydrated(true)
                             ->disabled(),
                         TextInput::make('price_dexain')
                             ->label('Price Dexa.in')
@@ -302,7 +340,9 @@ class OrderResource extends Resource
                                 return number_format((int) $number, 0, '', '.');
                             })
                             ->dehydrateStateUsing(function ($state) {
-                                return preg_replace('/[^0-9]/', '', $state);
+                                // Pastikan yang tersimpan adalah angka murni tanpa format
+                                if ($state === null || $state === '') return null;
+                                return (int) preg_replace('/[^0-9]/', '', $state);
                             })
                             ->dehydrated(true)
                             ->disabled(),
@@ -315,7 +355,9 @@ class OrderResource extends Resource
                                 return number_format((int) $number, 0, '', '.');
                             })
                             ->dehydrateStateUsing(function ($state) {
-                                return preg_replace('/[^0-9]/', '', $state);
+                                // Pastikan yang tersimpan adalah angka murni tanpa format
+                                if ($state === null || $state === '') return null;
+                                return (int) preg_replace('/[^0-9]/', '', $state);
                             })
                             ->dehydrated(true)
                             ->disabled(),
@@ -501,14 +543,8 @@ class OrderResource extends Resource
                 TextColumn::make('customer_code')
                     ->label('Customer')
                     ->sortable(),
-                TextColumn::make('nama')
+                TextColumn::make('label_jokian')
                     ->label('Jokian')
-                    ->formatStateUsing(function ($state) {
-                        if (is_array($state)) {
-                            return implode(', ', $state);
-                        }
-                        return $state;
-                    })
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Pengerjaan')
@@ -577,7 +613,7 @@ class OrderResource extends Resource
                     ]),
             ])
             ->actions([
-                ViewAction::make(),
+                // ViewAction::make(),
                 Html2MediaAction::make('cetak_invoice')
                     ->label('Cetak')
                     ->icon('heroicon-o-printer')
