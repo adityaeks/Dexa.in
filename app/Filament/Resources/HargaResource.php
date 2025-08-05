@@ -75,9 +75,6 @@ class HargaResource extends Resource
                         'instansi' => 'Instansi',
                     ])
                     ->required(),
-                TextInput::make('qty')
-                    ->label('Quantity')
-                    ->numeric(),
                 Textarea::make('description')
                     ->label('Deskripsi'),
             ]);

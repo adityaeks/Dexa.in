@@ -55,6 +55,28 @@ class CreateOrder extends CreateRecord
             $data['price_dexain'] = null;
             $data['price_akademisi'] = null;
         }
+        // Set price_akademisi2 meskipun hanya satu akademisi
+        $akademisiIds = $data['akademisi_id'] ?? [];
+        if (!is_array($akademisiIds)) {
+            $akademisiIds = [$akademisiIds];
+        }
+        $priceAkademisi2 = [];
+        if (count($akademisiIds) === 1) {
+            // Satu akademisi, masukkan satu array
+            $priceAkademisi2[] = [
+                'akademisi_id' => $akademisiIds[0],
+                'harga' => $data['price_akademisi'] ?? 0,
+            ];
+        } elseif (count($akademisiIds) > 1) {
+            // Multi akademisi, silakan sesuaikan logic jika ada pembagian harga
+            foreach ($akademisiIds as $id) {
+                $priceAkademisi2[] = [
+                    'akademisi_id' => $id,
+                    'harga' => 0, // Default 0, bisa diisi logic pembagian harga jika ada
+                ];
+            }
+        }
+        $data['price_akademisi2'] = $priceAkademisi2;
         // Set default status jika belum ada
         if (empty($data['status'])) {
             $data['status'] = 'Not started';

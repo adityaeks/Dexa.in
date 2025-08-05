@@ -49,6 +49,9 @@ class OrderResource extends Resource
                                     if (isset($harga->tingkat)) {
                                         $label .= ' - ' . $harga->tingkat;
                                     }
+                                    if (isset($harga->harga)) {
+                                        $label .= ' - Rp ' . number_format($harga->harga, 0, ',', '.');
+                                    }
                                     return [$harga->id => $label];
                                 })
                             )

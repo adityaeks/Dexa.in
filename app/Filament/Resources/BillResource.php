@@ -140,7 +140,8 @@ class BillResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('seq')->label('No'),
-                TextColumn::make('tr_code')->label('NOTA'),
+                TextColumn::make('tr_code')->label('NOTA')
+                    ->searchable(),
                 TextColumn::make('akademisi.name')->label('Akademisi'),
                 TextColumn::make('price')
                     ->label('Price Akademisi')

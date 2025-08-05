@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Database\Seeders\HargaSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -66,5 +67,10 @@ class DatabaseSeeder extends Seeder
             ]
         );
         $testUser->assignRole('admin');
+
+        // Seed harga data
+        $this->call([
+            HargaSeeder::class,
+        ]);
     }
 }

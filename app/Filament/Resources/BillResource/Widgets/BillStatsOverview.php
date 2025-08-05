@@ -12,10 +12,12 @@ class BillStatsOverview extends BaseWidget
     {
         $totalPemasukan = Bill::sum('price');
         $totalPengeluaran = Bill::sum('amt_reff');
+        $sisa = $totalPemasukan - $totalPengeluaran;
 
         return [
             Stat::make('Total Pemasukan', 'Rp ' . number_format($totalPemasukan, 0, '', '.')),
             Stat::make('Total Pengeluaran', 'Rp ' . number_format($totalPengeluaran, 0, '', '.')),
+            Stat::make('Sisa', 'Rp ' . number_format($sisa, 0, '', '.'))
         ];
     }
 }
