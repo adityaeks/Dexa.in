@@ -5,6 +5,8 @@ namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Harga;
+use App\Models\FundDexain;
+use App\Models\Fund;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -120,7 +122,7 @@ class CreateOrder extends CreateRecord
             ->success()
             ->sendToDatabase($user);
 
-        // Logic membuat Bill otomatis
+        // Logic membuat Bill atau Payday otomatis berdasarkan nama akademisi
         $order = $this->record;
         if ($order) {
             $akademisiIds = $order->akademisi_id ?: [];
@@ -137,22 +139,66 @@ class CreateOrder extends CreateRecord
                     }
                 }
             }
+
+            // Daftar nama akademisi yang harus membuat Payday alih-alih Bill
+            $paydayAkademisi = ['cece', 'eko', 'amar'];
+
             foreach (array_values($akademisiIds) as $i => $akademisiId) {
                 $akademisi = \App\Models\Akademisi::find($akademisiId);
                 $harga = $priceMap[$akademisiId] ?? 0;
-                \App\Models\Bill::create([
-                    'akademisi_id' => $akademisiId,
-                    'akademisi_name' => $akademisi?->name ?? '',
-                    'tr_code' => $order->nomer_nota,
-                    'price' => $harga,
-                    'price_order' => $order->price,
-                    'amt_reff' => 0,
-                    'status' => 'belum',
-                    'bukti_pembayaran' => null,
-                    'order_id' => $order->id,
-                    'seq' => $i + 1,
-                ]);
+                $akademisiName = strtolower($akademisi?->name ?? '');
+
+                // Cek apakah akademisi termasuk dalam daftar yang harus membuat Payday
+                if (in_array($akademisiName, $paydayAkademisi)) {
+                    // Buat data Payday untuk akademisi cece/eko/amar
+                    \App\Models\Payday::create([
+                        'order_id' => $order->id,
+                        'tr_code' => $order->nomer_nota,
+                        'akademisi_id' => $akademisiId,
+                        'akademisi_name' => $akademisi?->name ?? '',
+                        'price_order' => $order->price,
+                        'price' => $harga,
+                        'amt_reff' => 0,
+                        'status' => 'belum',
+                        'seq' => $i + 1,
+                    ]);
+                } else {
+                    // Buat data Bill untuk akademisi lainnya
+                    \App\Models\Bill::create([
+                        'akademisi_id' => $akademisiId,
+                        'akademisi_name' => $akademisi?->name ?? '',
+                        'tr_code' => $order->nomer_nota,
+                        'price' => $harga,
+                        'price_order' => $order->price,
+                        'amt_reff' => 0,
+                        'status' => 'belum',
+                        'bukti_pembayaran' => null,
+                        'order_id' => $order->id,
+                        'seq' => $i + 1,
+                    ]);
+                }
             }
+        }
+
+        // Logic untuk membuat data fund_dexain dan mengisi funds
+        if ($order && $order->price_dexain > 0) {
+            $dividedAmount = $order->price_dexain / 4; // Bagi price_dexain menjadi 4 bagian
+
+            $fundDexain = FundDexain::create([
+                'order_id' => $order->id,
+                'nomor_nota' => $order->nomer_nota,
+                'dexain' => $dividedAmount,
+                'eko' => $dividedAmount,
+                'amar' => $dividedAmount,
+                'cece' => $dividedAmount,
+            ]);
+
+            // Ambil nilai kolom dexain dan masukkan ke funds
+            $fund = \App\Models\Fund::first();
+            if (!$fund) {
+                $fund = \App\Models\Fund::create(['in' => 0, 'out' => 0]);
+            }
+            $fund->increment('in', $fundDexain->dexain);
         }
     }
 }

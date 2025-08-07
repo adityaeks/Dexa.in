@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use Guava\Calendar\Contracts\Eventable;
+use Guava\Calendar\ValueObjects\CalendarEvent;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\Fund;
+use App\Models\FundDexain;
 
-class Order extends Model
+class Order extends Model implements Eventable
 {
     use HasFactory, LogsActivity;
 
@@ -34,7 +38,66 @@ class Order extends Model
         };
         static::created($invalidateOrderStats);
         static::updated($invalidateOrderStats);
-        static::deleted($invalidateOrderStats);
+        // Logic untuk mengembalikan value fund_dexain dan fund ketika order dihapus
+        static::deleting(function ($order) {
+            // Logic untuk mengembalikan value fund_dexain dan fund
+            if ($order->price_dexain && $order->price_dexain > 0) {
+                // Cari fund_dexain berdasarkan order_id (lebih akurat)
+                $fundDexain = FundDexain::where('order_id', $order->id)->first();
+
+                if ($fundDexain) {
+                    // Kurangi nilai dexain dari funds (kembalikan ke nilai awal)
+                    $fund = Fund::first();
+                    if ($fund) {
+                        $fund->decrement('in', $fundDexain->dexain);
+                    }
+                    // Note: fund_dexain akan otomatis terhapus oleh foreign key cascade
+                }
+            }
+        });
+
+        static::deleted(function ($order) {
+            // Jalankan invalidate order stats
+            $start = now()->subMonths(6)->startOfMonth();
+            $end = now()->endOfMonth();
+            $cacheKey = 'order_stats_overview_' . $start->format('Ymd') . '_' . $end->format('Ymd');
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+            (new \App\Jobs\UpdateOrderStatisticsJob())->handle();
+        });
+
+        // Update funds table and fund_dexain when price_dexain is changed
+        static::updated(function ($order) {
+            if ($order->isDirty('price_dexain')) {
+                $fund = Fund::first();
+                if (!$fund) {
+                    $fund = Fund::create(['in' => 0, 'out' => 0]);
+                }
+
+                // Get the old and new values
+                $oldValue = $order->getOriginal('price_dexain') ?? 0;
+                $newValue = $order->price_dexain ?? 0;
+
+                // Calculate the difference for fund_dexain (hanya 1/4 dari difference)
+                $difference = ($newValue - $oldValue) / 4;
+
+                // Update the funds table dengan nilai dexain (1/4 dari price_dexain)
+                if ($difference != 0) {
+                    $fund->increment('in', $difference);
+                }
+
+                // Update fund_dexain record jika ada
+                $fundDexain = FundDexain::where('order_id', $order->id)->first();
+                if ($fundDexain) {
+                    $newDividedAmount = $newValue / 4;
+                    $fundDexain->update([
+                        'dexain' => $newDividedAmount,
+                        'eko' => $newDividedAmount,
+                        'amar' => $newDividedAmount,
+                        'cece' => $newDividedAmount,
+                    ]);
+                }
+            }
+        });
     }
     use HasFactory, LogsActivity;
 
@@ -69,6 +132,8 @@ class Order extends Model
         'payment_ids' => 'array',
         'akademisi_id' => 'array',
         'price_akademisi2' => 'array',
+        'start_date' => 'date',
+        'due_date' => 'datetime:Y-m-d H:i',
     ];
 
     // Relasi ke banyak Harga (multi-jokian)
@@ -120,6 +185,11 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function fundDexain()
+    {
+        return $this->hasOne(FundDexain::class);
+    }
+
     // Jika ingin relasi ke payment terakhir, gunakan accessor berikut (opsional)
     // public function lastPayment()
     // {
@@ -129,5 +199,33 @@ class Order extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()->logAll();
+    }
+
+    public function toCalendarEvent(): array|CalendarEvent
+    {
+        $backgroundColor = match ($this->status_payment) {
+            'paid' => '#10b981', // green-500
+            'partial' => '#f59e0b', // amber-500
+            'unpaid' => '#ef4444', // red-500
+            default => '#6b7280', // gray-500
+        };
+
+        return CalendarEvent::make($this)
+            ->title($this->nomer_nota)
+            ->start($this->due_date->format('Y-m-d'))
+            ->end($this->due_date->format('Y-m-d'))
+            ->allDay()
+            ->backgroundColor($backgroundColor)
+            ->textColor('#ffffff')
+            ->styles([
+                'font-weight: bold',
+                'border-radius: 4px',
+            ])
+            ->extendedProps([
+                'order_id' => $this->id,
+                'customer_name' => $this->customer?->name ?? 'Tidak ada customer',
+                'total_amount' => $this->total_harga,
+                'payment_status' => $this->status_payment,
+            ]);
     }
 }

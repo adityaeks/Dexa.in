@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('price_akademisi')->nullable();
             $table->json('price_akademisi2')->nullable();
             $table->date('start_date')->nullable();
-            $table->date('due_date')->nullable();
+            $table->datetime('due_date')->nullable();
             $table->string('contact')->nullable();
             $table->json('akademisi_id')->nullable();
             $table->json('file_tambahan')->nullable();

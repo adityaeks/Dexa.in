@@ -38,16 +38,18 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+                \App\Filament\Pages\OrderCalendarPage::class,
             ])
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-                \App\Filament\Widgets\DashboardOverview::class,
+                // Widgets\AccountWidget::class,
+                // Widgets\FilamentInfoWidget::class,
+                \App\Filament\Widgets\DashboardOverview::class, // 4 card dashboard dinonaktifkan
                 \App\Filament\Widgets\OrdersPerMonthChart::class,
                 \App\Filament\Widgets\TotalCustomersChart::class,
+                \App\Filament\Widgets\OrderCalendarWidget::class,
                 // \App\Filament\Widgets\LatestOrdersTable::class, // dinonaktifkan
             ])
             ->middleware([

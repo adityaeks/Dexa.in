@@ -71,6 +71,7 @@ class DatabaseSeeder extends Seeder
         // Seed harga data
         $this->call([
             HargaSeeder::class,
+            AkademisiSeeder::class,
         ]);
     }
 }

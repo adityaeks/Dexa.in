@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\{ Pages, RelationManagers\PaymentsRelationManager, Widgets\OrderStatsOverview };
 use App\Models\{ Order, Harga, Customer, Akademisi };
-use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, Repeater, FileUpload, Textarea };
+use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, DateTimePicker, Repeater, FileUpload, Textarea };
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
@@ -367,8 +367,11 @@ class OrderResource extends Resource
                         DatePicker::make('start_date')
                             ->label('Tanggal Mulai')
                             ->default(now()),
-                        DatePicker::make('due_date')
-                            ->label('Deadline'),
+                        DateTimePicker::make('due_date')
+                            ->label('Deadline')
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i')
+                            ->seconds(false),
                         Select::make('akademisi_id')
                             ->label('Akademisi')
                             ->searchable()
@@ -544,11 +547,9 @@ class OrderResource extends Resource
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('customer_code')
-                    ->label('Customer')
-                    ->sortable(),
+                    ->label('Customer'),
                 TextColumn::make('label_jokian')
-                    ->label('Jokian')
-                    ->sortable(),
+                    ->label('Jokian'),
                 TextColumn::make('status')
                     ->label('Pengerjaan')
                     ->sortable()

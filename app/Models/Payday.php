@@ -11,8 +11,12 @@ class Payday extends Model
         'tr_code',
         'akademisi_id',
         'akademisi_name',
-        'price_base',
+        'price_order',
         'price',
+        'amt_reff',
+        'status',
+        'bukti_pembayaran',
+        'seq',
     ];
 
     public function order()
@@ -24,4 +28,8 @@ class Payday extends Model
     {
         return $this->belongsTo(Akademisi::class);
     }
+
+    protected $casts = [
+        'bukti_pembayaran' => 'array',
+    ];
 }

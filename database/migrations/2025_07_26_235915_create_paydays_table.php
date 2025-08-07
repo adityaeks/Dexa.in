@@ -13,16 +13,18 @@ return new class extends Migration
     {
         Schema::create('paydays', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('order_id');
-            $table->string('tr_code');
+            $table->unsignedBigInteger('order_id')->nullable();
             $table->unsignedBigInteger('akademisi_id');
             $table->string('akademisi_name');
-            $table->integer('price_base');
-            $table->integer('price');
+            $table->bigInteger('price_order');
+            $table->bigInteger('price');
+            $table->bigInteger('amt_reff');
+            $table->enum('status', ['belum', 'dp', 'lunas'])->default('belum');
+            $table->json('bukti_pembayaran')->nullable();
+            $table->string('tr_code');
+            $table->unsignedInteger('seq')->nullable();
             $table->timestamps();
-
             $table->foreign('order_id')->references('id')->on('orders')->onDelete('cascade');
-            $table->foreign('akademisi_id')->references('id')->on('akademisis')->onDelete('cascade');
         });
     }
 
