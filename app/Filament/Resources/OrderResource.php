@@ -369,11 +369,13 @@ class OrderResource extends Resource
                             ->default(now()),
                         DateTimePicker::make('due_date')
                             ->label('Deadline')
+                            ->required()
                             ->displayFormat('d/m/Y H:i')
                             ->format('Y-m-d H:i')
                             ->seconds(false),
                         Select::make('akademisi_id')
                             ->label('Akademisi')
+                            ->required()
                             ->searchable()
                             ->multiple()
                             ->options(fn () => Akademisi::pluck('name', 'id'))

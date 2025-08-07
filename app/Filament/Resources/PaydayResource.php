@@ -154,16 +154,6 @@ class PaydayResource extends Resource
                 TextColumn::make('price')
                     ->label('Price Akademisi')
                     ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                TextColumn::make('belum_dibayar')
-                    ->label('Belum Dibayar')
-                    ->getStateUsing(fn($record) => (int)$record->price - (int)$record->amt_reff)
-                    ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                TextColumn::make('amt_reff')
-                    ->label('Dibayar')
-                    ->formatStateUsing(fn($state) => 'Rp ' . number_format((int)$state, 0, '', '.')),
-                TextColumn::make('status')->label('Status')->badge()->color(fn($state) => match($state) {
-                    'lunas' => 'success', 'dp' => 'warning', 'belum' => 'danger', default => 'secondary',
-                }),
                 TextColumn::make('created_at')->label('Dibuat')->dateTime()->sortable(),
             ])
             ->filters([
