@@ -25,9 +25,9 @@ class PaydayResource extends Resource
     protected static ?string $model = Payday::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
-    protected static ?string $navigationLabel = 'Pemasukan';
-    protected static ?string $modelLabel = 'Pemasukan';
-    protected static ?string $pluralModelLabel = 'Pemasukan';
+    protected static ?string $navigationLabel = 'Pajak';
+    protected static ?string $modelLabel = 'Pajak';
+    protected static ?string $pluralModelLabel = 'Pajak';
     protected static ?string $navigationGroup = 'Manajemen Dexa.in';
     protected static ?int $navigationSort = 1;
 
