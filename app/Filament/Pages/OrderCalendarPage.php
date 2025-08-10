@@ -13,7 +13,8 @@ class OrderCalendarPage extends Page
 
     protected static ?string $navigationLabel = 'Kalender';
 
-    protected static ?string $title = 'Kalender';
+    protected static ?string $title = 'Kalender ';
+
 
     public function getHeaderWidgets(): array
     {

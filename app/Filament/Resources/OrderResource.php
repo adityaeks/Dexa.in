@@ -281,7 +281,7 @@ class OrderResource extends Resource
                             ]),
                         Select::make('status_payment')
                             ->label('Status Payment')
-                            ->disabled()
+                            // ->disabled()
                             ->options([
                                 'belum' => 'Belum',
                                 'DP' => 'DP',

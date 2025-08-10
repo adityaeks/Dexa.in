@@ -6,28 +6,33 @@ use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Card;
 use App\Models\Order;
 use App\Models\Customer;
+use Carbon\Carbon;
 
 class DashboardOverview extends StatsOverviewWidget
 {
-    // protected function getCards(): array
-    // {
-    //     return [
-    //         Card::make('Kas Dexain', 'Rp' . number_format(Order::sum('price_dexain')))
-    //             ->description('Total kas Dexain dari orders')
-    //             ->descriptionIcon('heroicon-o-banknotes')
-    //             ->color('info'),
-    //         Card::make('Pemasukan', 'Rp' . number_format(Order::sum('price')))
-    //             ->description('Total pemasukan dari order')
-    //             ->descriptionIcon('heroicon-o-arrow-trending-up')
-    //             ->color('success'),
-    //         Card::make('Total Pengeluaran', 'Rp' . number_format(Order::sum('price_akademisi')))
-    //             ->description('Total pengeluaran dari order')
-    //             ->descriptionIcon('heroicon-o-arrow-trending-down')
-    //             ->color('danger'),
-    //         Card::make('Belum Bayar', 'Rp' . number_format(Order::sum('price') - Order::sum('amt_reff')))
-    //             ->description('Total tagihan belum dibayar')
-    //             ->descriptionIcon('heroicon-o-exclamation-triangle')
-    //             ->color('warning'),
-    //     ];
-    // }
+    protected function getCards(): array
+    {
+        // Hitung order hari ini
+        $todayOrders = Order::whereDate('created_at', Carbon::today())->count();
+
+        $totalCustomers = Customer::count();
+
+        // Hitung total order
+        $totalOrders = Order::count();
+
+        return [
+            Card::make('Today Order', $todayOrders)
+                ->description('Order hari ini')
+                ->descriptionIcon('heroicon-o-calendar-days')
+                ->color('success'),
+            Card::make('Total Order', $totalOrders)
+                ->description('Total semua order')
+                ->descriptionIcon('heroicon-o-shopping-cart')
+                ->color('info'),
+            Card::make('Total Customers', $totalCustomers)
+                ->description('Total semua customer')
+                ->descriptionIcon('heroicon-o-user')
+                ->color('warning'),
+        ];
+    }
 }

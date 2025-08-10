@@ -126,11 +126,18 @@ class CreateOrder extends CreateRecord
         $order = $this->record;
         if ($order) {
             $akademisiIds = $order->akademisi_id ?: [];
+
+            // Pastikan akademisiIds adalah array
+            if (!is_array($akademisiIds)) {
+                $akademisiIds = [$akademisiIds];
+            }
+
             // Ambil array price_akademisi2 (bisa json string atau array)
             $priceAkademisi2 = $order->price_akademisi2;
             if (is_string($priceAkademisi2)) {
                 $priceAkademisi2 = json_decode($priceAkademisi2, true);
             }
+
             $priceMap = [];
             if (is_array($priceAkademisi2)) {
                 foreach ($priceAkademisi2 as $row) {
@@ -145,7 +152,13 @@ class CreateOrder extends CreateRecord
 
             foreach (array_values($akademisiIds) as $i => $akademisiId) {
                 $akademisi = \App\Models\Akademisi::find($akademisiId);
+
+                // Jika tidak ada harga spesifik di price_akademisi2, gunakan pembagian rata
                 $harga = $priceMap[$akademisiId] ?? 0;
+                if ($harga == 0 && count($akademisiIds) > 0) {
+                    $harga = (int) ($order->price_akademisi / count($akademisiIds));
+                }
+
                 $akademisiName = strtolower($akademisi?->name ?? '');
 
                 // Cek apakah akademisi termasuk dalam daftar yang harus membuat Payday
@@ -162,6 +175,13 @@ class CreateOrder extends CreateRecord
                         'status' => 'belum',
                         'seq' => $i + 1,
                     ]);
+
+                    Log::info('Payday created for akademisi', [
+                        'order_id' => $order->id,
+                        'akademisi_name' => $akademisi?->name,
+                        'price' => $harga,
+                        'tr_code' => $order->nomer_nota
+                    ]);
                 } else {
                     // Buat data Bill untuk akademisi lainnya
                     \App\Models\Bill::create([
@@ -175,6 +195,13 @@ class CreateOrder extends CreateRecord
                         'bukti_pembayaran' => null,
                         'order_id' => $order->id,
                         'seq' => $i + 1,
+                    ]);
+
+                    Log::info('Bill created for akademisi', [
+                        'order_id' => $order->id,
+                        'akademisi_name' => $akademisi?->name,
+                        'price' => $harga,
+                        'tr_code' => $order->nomer_nota
                     ]);
                 }
             }

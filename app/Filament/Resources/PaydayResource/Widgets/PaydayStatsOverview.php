@@ -71,8 +71,8 @@ class PaydayStatsOverview extends BaseWidget
                 ->description("+ Pajak: Rp " . number_format($ceceFund, 0, '', '.'))
                 ->color('success'),
 
-            Stat::make('Kas Dexain', 'Rp ' . number_format($kasDexainTotal, 0, '', '.'))
-                ->description("Total Kas Dexain")
+            Stat::make('Dexain', 'Rp ' . number_format($kasDexainTotal, 0, '', '.'))
+                ->description("+ Kas Dexain")
                 ->color('info'),
         ];
     }

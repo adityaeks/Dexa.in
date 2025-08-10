@@ -46,11 +46,15 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 // Widgets\AccountWidget::class,
                 // Widgets\FilamentInfoWidget::class,
-                \App\Filament\Widgets\DashboardOverview::class, // 4 card dashboard dinonaktifkan
+                \App\Filament\Widgets\DashboardOverview::class,
+                // \App\Filament\Resources\OrderResource\Widgets\OrderStatsOverview::class,
+                // \App\Filament\Resources\PaydayResource\Widgets\PaydayStatsOverview::class,
+                // \App\Filament\Resources\PaymentResource\Widgets\PaymentStatsOverview::class,
+                // \App\Filament\Resources\BillResource\Widgets\BillStatsOverview::class,
                 \App\Filament\Widgets\OrdersPerMonthChart::class,
                 \App\Filament\Widgets\TotalCustomersChart::class,
                 \App\Filament\Widgets\OrderCalendarWidget::class,
-                // \App\Filament\Widgets\LatestOrdersTable::class, // dinonaktifkan
+                // \App\Filament\Widgets\LatestOrdersTable::class,
             ])
             ->middleware([
                 EncryptCookies::class,
