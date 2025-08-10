@@ -16,6 +16,7 @@
         "laravel/framework": "^11.0",
         "laravel/tinker": "^2.10.1",
         "rmsramos/activitylog": "^1.0",
+        "spatie/laravel-google-calendar": "^3.8",
         "torgodly/html2media": "^1.1"
     },
     "require-dev": {

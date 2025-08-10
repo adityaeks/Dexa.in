@@ -140,7 +140,38 @@ class OrderResource extends Resource
                                 $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                 $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
 
+                                // Update price_akademisi2 berdasarkan harga akademisi baru
+                                $akademisiIds = (array) $get('akademisi_id');
+                                $existingPriceAkademisi2 = $get('price_akademisi2') ?? [];
 
+                                if (count($akademisiIds) === 1) {
+                                    // Satu akademisi
+                                    $set('price_akademisi2', [
+                                        [
+                                            'akademisi_id' => $akademisiIds[0],
+                                            'harga' => $akademisi,
+                                        ]
+                                    ]);
+                                } elseif (count($akademisiIds) > 1) {
+                                    // Multi akademisi, pertahankan input yang sudah ada atau default 0
+                                    $existingPriceMap = [];
+                                    if (is_array($existingPriceAkademisi2)) {
+                                        foreach ($existingPriceAkademisi2 as $row) {
+                                            if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                                                $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                                            }
+                                        }
+                                    }
+
+                                    $newPriceAkademisi2 = [];
+                                    foreach ($akademisiIds as $id) {
+                                        $newPriceAkademisi2[] = [
+                                            'akademisi_id' => $id,
+                                            'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
+                                        ];
+                                    }
+                                    $set('price_akademisi2', $newPriceAkademisi2);
+                                }
                             }),
                         TextInput::make('nomer_nota')
                             ->label('Nomer Nota')
@@ -180,7 +211,38 @@ class OrderResource extends Resource
                                     $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                     $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
 
+                                    // Update price_akademisi2 berdasarkan harga akademisi baru
+                                    $akademisiIds = (array) $get('akademisi_id');
+                                    $existingPriceAkademisi2 = $get('price_akademisi2') ?? [];
 
+                                    if (count($akademisiIds) === 1) {
+                                        // Satu akademisi
+                                        $set('price_akademisi2', [
+                                            [
+                                                'akademisi_id' => $akademisiIds[0],
+                                                'harga' => $akademisi,
+                                            ]
+                                        ]);
+                                    } elseif (count($akademisiIds) > 1) {
+                                        // Multi akademisi, pertahankan input yang sudah ada atau default 0
+                                        $existingPriceMap = [];
+                                        if (is_array($existingPriceAkademisi2)) {
+                                            foreach ($existingPriceAkademisi2 as $row) {
+                                                if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                                                    $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                                                }
+                                            }
+                                        }
+
+                                        $newPriceAkademisi2 = [];
+                                        foreach ($akademisiIds as $id) {
+                                            $newPriceAkademisi2[] = [
+                                                'akademisi_id' => $id,
+                                                'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
+                                            ];
+                                        }
+                                        $set('price_akademisi2', $newPriceAkademisi2);
+                                    }
                                 }
                             }),
 
@@ -387,13 +449,49 @@ class OrderResource extends Resource
                                 return $state;
                             })
                             ->reactive()
-                            ->afterStateUpdated(function ($state, $set) {
+                            ->afterStateUpdated(function ($state, $set, $get) {
                                 // Jika akademisi lebih dari 1, tampilkan field price2
                                 if (is_array($state) && count($state) > 1) {
                                     $set('show_price2', true);
                                 } else {
                                     $set('show_price2', false);
                                     $set('price2', null);
+                                }
+
+                                // Update price_akademisi2 berdasarkan jumlah akademisi
+                                $priceAkademisi = (int) preg_replace('/[^0-9]/', '', $get('price_akademisi') ?? 0);
+                                $akademisiIds = is_array($state) ? $state : [];
+                                $existingPriceAkademisi2 = $get('price_akademisi2') ?? [];
+
+                                if (count($akademisiIds) === 1) {
+                                    // Satu akademisi
+                                    $set('price_akademisi2', [
+                                        [
+                                            'akademisi_id' => $akademisiIds[0],
+                                            'harga' => $priceAkademisi,
+                                        ]
+                                    ]);
+                                } elseif (count($akademisiIds) > 1) {
+                                    // Multi akademisi, pertahankan input yang sudah ada atau default 0
+                                    $existingPriceMap = [];
+                                    if (is_array($existingPriceAkademisi2)) {
+                                        foreach ($existingPriceAkademisi2 as $row) {
+                                            if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                                                $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                                            }
+                                        }
+                                    }
+
+                                    $newPriceAkademisi2 = [];
+                                    foreach ($akademisiIds as $id) {
+                                        $newPriceAkademisi2[] = [
+                                            'akademisi_id' => $id,
+                                            'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
+                                        ];
+                                    }
+                                    $set('price_akademisi2', $newPriceAkademisi2);
+                                } else {
+                                    $set('price_akademisi2', []);
                                 }
                             }),
                     // Hidden field untuk mengontrol visibility price2

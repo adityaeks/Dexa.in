@@ -19,6 +19,50 @@ class EditOrder extends EditRecord
             $customer = \App\Models\Customer::find($data['customer_id']);
             $data['customer_code'] = $customer?->code;
         }
+
+        // Update price_akademisi2 jika ada perubahan akademisi
+        $akademisiIds = $data['akademisi_id'] ?? [];
+        if (!is_array($akademisiIds)) {
+            $akademisiIds = [$akademisiIds];
+        }
+
+        // Jika price_akademisi2 kosong atau tidak sesuai dengan jumlah akademisi, update
+        $priceAkademisi2 = $data['price_akademisi2'] ?? [];
+        if (is_string($priceAkademisi2)) {
+            $priceAkademisi2 = json_decode($priceAkademisi2, true);
+        }
+
+        if (count($akademisiIds) !== count($priceAkademisi2)) {
+            $priceAkademisi = $data['price_akademisi'] ?? 0;
+            $newPriceAkademisi2 = [];
+
+            if (count($akademisiIds) === 1) {
+                // Satu akademisi
+                $newPriceAkademisi2[] = [
+                    'akademisi_id' => $akademisiIds[0],
+                    'harga' => $priceAkademisi,
+                ];
+            } elseif (count($akademisiIds) > 1) {
+                // Multi akademisi, pertahankan input yang sudah ada atau default 0
+                $existingPriceMap = [];
+                if (is_array($priceAkademisi2)) {
+                    foreach ($priceAkademisi2 as $row) {
+                        if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                            $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                        }
+                    }
+                }
+
+                foreach ($akademisiIds as $id) {
+                    $newPriceAkademisi2[] = [
+                        'akademisi_id' => $id,
+                        'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
+                    ];
+                }
+            }
+            $data['price_akademisi2'] = $newPriceAkademisi2;
+        }
+
         return $data;
     }
 
@@ -123,5 +167,8 @@ class EditOrder extends EditRecord
                 }
             }
         }
+
+        // Google Calendar event akan diupdate otomatis oleh OrderObserver
+        // Tidak perlu manual update di sini untuk menghindari duplikasi
     }
 }

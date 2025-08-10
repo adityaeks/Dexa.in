@@ -115,6 +115,7 @@ class Order extends Model implements Eventable
         'price_akademisi2',
         'start_date',
         'due_date',
+        'google_calendar_event_id',
         'contact',
         'akademisi_id',
         'file_tambahan',

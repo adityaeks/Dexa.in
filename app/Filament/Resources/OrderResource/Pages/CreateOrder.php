@@ -70,11 +70,26 @@ class CreateOrder extends CreateRecord
                 'harga' => $data['price_akademisi'] ?? 0,
             ];
         } elseif (count($akademisiIds) > 1) {
-            // Multi akademisi, silakan sesuaikan logic jika ada pembagian harga
+            // Multi akademisi, gunakan input yang sudah ada atau default 0
+            $existingPriceAkademisi2 = $data['price_akademisi2'] ?? [];
+            if (is_string($existingPriceAkademisi2)) {
+                $existingPriceAkademisi2 = json_decode($existingPriceAkademisi2, true);
+            }
+
+            // Buat map dari input yang sudah ada
+            $existingPriceMap = [];
+            if (is_array($existingPriceAkademisi2)) {
+                foreach ($existingPriceAkademisi2 as $row) {
+                    if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                        $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                    }
+                }
+            }
+
             foreach ($akademisiIds as $id) {
                 $priceAkademisi2[] = [
                     'akademisi_id' => $id,
-                    'harga' => 0, // Default 0, bisa diisi logic pembagian harga jika ada
+                    'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
                 ];
             }
         }
@@ -227,5 +242,8 @@ class CreateOrder extends CreateRecord
             }
             $fund->increment('in', $fundDexain->dexain);
         }
+
+        // Google Calendar event akan dibuat otomatis oleh OrderObserver
+        // Tidak perlu manual create di sini untuk menghindari duplikasi
     }
 }

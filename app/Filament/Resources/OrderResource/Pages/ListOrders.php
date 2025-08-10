@@ -33,6 +33,42 @@ class ListOrders extends ListRecords
         ];
     }
 
+    protected function getActions(): array
+    {
+        return [
+            Actions\DeleteAction::make()
+                ->before(function ($record) {
+                    \Illuminate\Support\Facades\Log::info('Delete action triggered for order', [
+                        'order_id' => $record->id,
+                        'google_calendar_event_id' => $record->google_calendar_event_id
+                    ]);
+
+                    // Hapus event Google Calendar sebelum menghapus order
+                    if ($record && $record->google_calendar_event_id) {
+                        try {
+                            $googleCalendarService = new \App\Services\GoogleCalendarService();
+                            $success = $googleCalendarService->deleteEventFromOrder($record);
+
+                            \Illuminate\Support\Facades\Log::info('Google Calendar delete result', [
+                                'order_id' => $record->id,
+                                'success' => $success
+                            ]);
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error('Error saat hapus Google Calendar event', [
+                                'order_id' => $record->id,
+                                'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString()
+                            ]);
+                        }
+                    } else {
+                        \Illuminate\Support\Facades\Log::info('Order tidak memiliki Google Calendar event', [
+                            'order_id' => $record->id
+                        ]);
+                    }
+                }),
+        ];
+    }
+
     protected function getHeaderWidgets(): array
     {
         return [

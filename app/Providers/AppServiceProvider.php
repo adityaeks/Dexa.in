@@ -10,6 +10,8 @@ use App\Policies\RolePolicy;
 use Spatie\Permission\Models\Role;
 use Spatie\Activitylog\Models\Activity;
 use App\Policies\ActivityPolicy;
+use App\Models\Order;
+use App\Observers\OrderObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,5 +37,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;
         });
+
+        // Register observers
+        Order::observe(OrderObserver::class);
     }
 }
