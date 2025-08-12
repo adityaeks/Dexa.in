@@ -10,6 +10,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Models\Fund;
 use App\Models\FundDexain;
+use App\Models\Payin;
 
 class Order extends Model implements Eventable
 {
@@ -38,6 +39,32 @@ class Order extends Model implements Eventable
         };
         static::created($invalidateOrderStats);
         static::updated($invalidateOrderStats);
+
+        // Auto create Payin record when Turnitin is selected
+        static::created(function ($order) {
+            $hargaList = Harga::whereIn('id', (array)$order->nama)->get();
+            $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+
+            if ($hasTurnitin) {
+                $turnitinHarga = $hargaList->where('nama', 'Turnitin')->first();
+                if ($turnitinHarga) {
+                    $description = $turnitinHarga->nama;
+                    if ($turnitinHarga->tingkat) {
+                        $description .= ' - ' . $turnitinHarga->tingkat;
+                    }
+                    // if ($turnitinHarga->harga) {
+                    //     $description .= ' - Rp ' . number_format($turnitinHarga->harga, 0, ',', '.');
+                    // }
+
+                    // Create Payin record
+                    Payin::create([
+                        'description' => $description,
+                        'price' => $order->price,
+                    ]);
+                }
+            }
+        });
+
         // Logic untuk mengembalikan value fund_dexain dan fund ketika order dihapus
         static::deleting(function ($order) {
             // Logic untuk mengembalikan value fund_dexain dan fund
@@ -68,14 +95,20 @@ class Order extends Model implements Eventable
         // Update funds table and fund_dexain when price_dexain is changed
         static::updated(function ($order) {
             if ($order->isDirty('price_dexain')) {
+                // Skip jika ini adalah create pertama kali (oldValue adalah null dan newValue > 0)
+                $oldValue = $order->getOriginal('price_dexain') ?? 0;
+                $newValue = $order->price_dexain ?? 0;
+
+                // Jika oldValue adalah 0 dan newValue > 0, ini kemungkinan create pertama kali
+                // Biarkan CreateOrder.php yang menangani increment pertama
+                if ($oldValue == 0 && $newValue > 0) {
+                    return;
+                }
+
                 $fund = Fund::first();
                 if (!$fund) {
                     $fund = Fund::create(['in' => 0, 'out' => 0]);
                 }
-
-                // Get the old and new values
-                $oldValue = $order->getOriginal('price_dexain') ?? 0;
-                $newValue = $order->price_dexain ?? 0;
 
                 // Calculate the difference for fund_dexain (hanya 1/4 dari difference)
                 $difference = ($newValue - $oldValue) / 4;

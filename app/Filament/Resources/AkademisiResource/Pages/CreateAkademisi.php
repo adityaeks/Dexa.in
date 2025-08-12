@@ -9,4 +9,14 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateAkademisi extends CreateRecord
 {
     protected static string $resource = AkademisiResource::class;
+    protected function afterCreate(): void
+    {
+        $this->record->notify(
+            \Filament\Notifications\Notification::make()
+                ->title('Akademisi Berhasil Dibuat!')
+                ->body('Akademisi ' . $this->record->name . ' telah dibuat dengan ID: ' . $this->record->id)
+                ->toDatabase()
+        );
+    }
+
 }

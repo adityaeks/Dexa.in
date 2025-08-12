@@ -5,10 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Notifications\Notifiable;
+
 
 class Akademisi extends Model
 {
     use LogsActivity;
+    use Notifiable;
+
 
     protected $fillable = [
         'name',

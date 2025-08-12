@@ -20,11 +20,17 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Support\Facades\Config;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        // Set queue to sync for development to ensure notifications work immediately
+        if (app()->environment('local')) {
+            Config::set('queue.default', 'sync');
+        }
+
         return $panel
             ->default()
             ->id('admin')

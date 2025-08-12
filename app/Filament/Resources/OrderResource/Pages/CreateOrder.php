@@ -43,31 +43,46 @@ class CreateOrder extends CreateRecord
         }
 
         $data['price'] = $totalHarga;
+
+        // Cek apakah ada jokian Turnitin
+        $hargaList = Harga::whereIn('id', (array)$data['nama'])->get();
+        $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+
         // Hitung dan set price_dexain & price_akademisi di backend agar selalu tersimpan
         if ($totalHarga > 0) {
-            if ($totalHarga <= 100000) {
-                $dexain = (int) round($totalHarga * 0.1);
+            if ($hasTurnitin) {
+                // Jika Turnitin dipilih, semua harga untuk dexain
+                $dexain = $totalHarga;
+                $akademisi = 0;
             } else {
-                $dexain = (int) round($totalHarga * 0.2);
+                // Logic normal: price_dexain = 10% jika total <= 100000, 20% jika > 100000
+                if ($totalHarga <= 100000) {
+                    $dexain = (int) round($totalHarga * 0.1);
+                } else {
+                    $dexain = (int) round($totalHarga * 0.2);
+                }
+                $akademisi = $totalHarga - $dexain;
             }
-            $akademisi = $totalHarga - $dexain;
             $data['price_dexain'] = $dexain;
             $data['price_akademisi'] = $akademisi;
         } else {
             $data['price_dexain'] = null;
             $data['price_akademisi'] = null;
         }
+
         // Set price_akademisi2 meskipun hanya satu akademisi
         $akademisiIds = $data['akademisi_id'] ?? [];
         if (!is_array($akademisiIds)) {
             $akademisiIds = [$akademisiIds];
         }
         $priceAkademisi2 = [];
+
         if (count($akademisiIds) === 1) {
-            // Satu akademisi, masukkan satu array
+            // Satu akademisi
+            $akademisiHarga = $hasTurnitin ? 0 : ($data['price_akademisi'] ?? 0);
             $priceAkademisi2[] = [
                 'akademisi_id' => $akademisiIds[0],
-                'harga' => $data['price_akademisi'] ?? 0,
+                'harga' => $akademisiHarga,
             ];
         } elseif (count($akademisiIds) > 1) {
             // Multi akademisi, gunakan input yang sudah ada atau default 0
@@ -87,9 +102,11 @@ class CreateOrder extends CreateRecord
             }
 
             foreach ($akademisiIds as $id) {
+                // Jika Turnitin dipilih, semua harga akademisi = 0
+                $akademisiHarga = $hasTurnitin ? 0 : ($existingPriceMap[$id] ?? 0);
                 $priceAkademisi2[] = [
                     'akademisi_id' => $id,
-                    'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
+                    'harga' => $akademisiHarga,
                 ];
             }
         }
@@ -163,7 +180,7 @@ class CreateOrder extends CreateRecord
             }
 
             // Daftar nama akademisi yang harus membuat Payday alih-alih Bill
-            $paydayAkademisi = ['cece', 'eko', 'amar'];
+            $paydayAkademisi = ['cece', 'eko', 'amar', 'dexain'];
 
             foreach (array_values($akademisiIds) as $i => $akademisiId) {
                 $akademisi = \App\Models\Akademisi::find($akademisiId);
@@ -223,24 +240,33 @@ class CreateOrder extends CreateRecord
         }
 
         // Logic untuk membuat data fund_dexain dan mengisi funds
+        // Note: Event 'updated' di Order.php model akan skip increment jika ini adalah create pertama kali
         if ($order && $order->price_dexain > 0) {
-            $dividedAmount = $order->price_dexain / 4; // Bagi price_dexain menjadi 4 bagian
+            // Cek apakah order ini memiliki jokian Turnitin
+            $hargaList = Harga::whereIn('id', (array)$order->nama)->get();
+            $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
 
-            $fundDexain = FundDexain::create([
-                'order_id' => $order->id,
-                'nomor_nota' => $order->nomer_nota,
-                'dexain' => $dividedAmount,
-                'eko' => $dividedAmount,
-                'amar' => $dividedAmount,
-                'cece' => $dividedAmount,
-            ]);
+            // Jika Turnitin dipilih, tidak perlu membuat fundDexain
+            if (!$hasTurnitin) {
+                $dividedAmount = $order->price_dexain / 4; // Bagi price_dexain menjadi 4 bagian
 
-            // Ambil nilai kolom dexain dan masukkan ke funds
-            $fund = \App\Models\Fund::first();
-            if (!$fund) {
-                $fund = \App\Models\Fund::create(['in' => 0, 'out' => 0]);
+                $fundDexain = FundDexain::create([
+                    'order_id' => $order->id,
+                    'nomor_nota' => $order->nomer_nota,
+                    'dexain' => $dividedAmount,
+                    'eko' => $dividedAmount,
+                    'amar' => $dividedAmount,
+                    'cece' => $dividedAmount,
+                ]);
+
+                // Increment kolom 'in' di tabel fund (1/4 dari price_dexain)
+                // Hanya untuk create pertama kali, update selanjutnya ditangani oleh Order model event
+                $fund = \App\Models\Fund::first();
+                if (!$fund) {
+                    $fund = \App\Models\Fund::create(['in' => 0, 'out' => 0]);
+                }
+                $fund->increment('in', $dividedAmount);
             }
-            $fund->increment('in', $fundDexain->dexain);
         }
 
         // Google Calendar event akan dibuat otomatis oleh OrderObserver

@@ -38,4 +38,5 @@ class CreateUser extends CreateRecord
             ->title('User Created')
             ->body('User ' . $record->name . ' telah dibuat dengan ID: ' . $record->id);
     }
+    
 }

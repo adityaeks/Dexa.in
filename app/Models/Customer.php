@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Notifications\Notifiable;
 
 class Customer extends Model
 {
-    use LogsActivity;
+    use LogsActivity, Notifiable;
 
     protected $fillable = [
         'code',

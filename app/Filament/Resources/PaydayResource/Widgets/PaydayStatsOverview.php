@@ -5,6 +5,7 @@ namespace App\Filament\Resources\PaydayResource\Widgets;
 use App\Models\Payday;
 use App\Models\FundDexain;
 use App\Models\Akademisi;
+use App\Models\Payin;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Session;
@@ -49,14 +50,23 @@ class PaydayStatsOverview extends BaseWidget
         $amarFund = (clone $fundQuery)->sum('amar');
         $ceceFund = (clone $fundQuery)->sum('cece');
         $kasDexainTotal = (clone $fundQuery)->sum('dexain');
+        $dexainFund = (clone $fundQuery)->sum('dexain');
+
+        // Get Payin data with same date filters
+        $payinQuery = Payin::query();
+        if ($startDate) {
+            $payinQuery->whereDate('created_at', '>=', $startDate);
+        }
+        if ($dueDate) {
+            $payinQuery->whereDate('created_at', '<=', $dueDate);
+        }
+        $totalPayin = (clone $payinQuery)->sum('price');
 
         // Calculate totals (Payday + FundDexain)
         $ekoTotal = $ekoPayday + $ekoFund;
         $amarTotal = $amarPayday + $amarFund;
         $ceceTotal = $cecePayday + $ceceFund;
-
-        // Calculate grand total
-        $grandTotal = $ekoTotal + $amarTotal + $ceceTotal + $kasDexainTotal;
+        $dexainTotal = $totalPayin + $kasDexainTotal;
 
         return [
             Stat::make('Eko', 'Rp ' . number_format($ekoTotal, 0, '', '.'))
@@ -71,8 +81,8 @@ class PaydayStatsOverview extends BaseWidget
                 ->description("+ Pajak: Rp " . number_format($ceceFund, 0, '', '.'))
                 ->color('success'),
 
-            Stat::make('Dexain', 'Rp ' . number_format($kasDexainTotal, 0, '', '.'))
-                ->description("+ Kas Dexain")
+            Stat::make('Dexain', 'Rp ' . number_format($dexainTotal, 0, '', '.'))
+                ->description("+ Pajak: Rp " . number_format($dexainFund, 0, '', '.'))
                 ->color('info'),
         ];
     }

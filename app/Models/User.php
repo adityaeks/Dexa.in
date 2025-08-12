@@ -12,6 +12,7 @@ use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\Storage;
 use Filament\Models\Contracts\HasAvatar;
 
+
 class User extends Authenticatable implements HasAvatar
 {
     // Untuk kompatibilitas Filament avatar (method, bukan attribute)

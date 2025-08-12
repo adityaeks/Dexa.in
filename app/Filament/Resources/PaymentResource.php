@@ -30,7 +30,22 @@ class PaymentResource extends Resource
         return $form->schema([
             Select::make('order_id')
                 ->label('Nota')
-                ->relationship('order', 'nomer_nota')
+                ->options(function () {
+                    // Untuk mode edit, include semua order termasuk yang lunas
+                    $query = \App\Models\Order::query();
+
+                    // Jika ini adalah mode create, filter hanya yang belum lunas
+                    if (request()->route()->getName() === 'filament.admin.resources.payments.create') {
+                        $query->where(function($q) {
+                            $q->where('status_payment', '!=', 'Lunas')
+                              ->orWhereNull('status_payment');
+                        });
+                    }
+
+                    return $query->orderBy('nomer_nota', 'asc')
+                        ->pluck('nomer_nota', 'id')
+                        ->toArray();
+                })
                 ->searchable()
                 ->required()
                 ->default(fn () => request('order_id'))
@@ -80,6 +95,7 @@ class PaymentResource extends Resource
                 ->label('Harga Bayar')
                 ->required()
                 ->prefix('Rp')
+                ->live()
                 ->formatStateUsing(function ($state) {
                     if ($state === null || $state === '') return null;
                     $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
@@ -87,6 +103,13 @@ class PaymentResource extends Resource
                 })
                 ->dehydrateStateUsing(function ($state) {
                     return preg_replace('/[^0-9]/', '', $state);
+                })
+                ->afterStateUpdated(function ($state, $set) {
+                    if ($state) {
+                        $number = preg_replace('/[^0-9]/', '', str_replace([',', '.'], '', $state));
+                        $formatted = number_format((int) $number, 0, '', '.');
+                        $set('price_bayar', $formatted);
+                    }
                 }),
             TextInput::make('price_sisa')
                 ->label('Sisa Bayar')

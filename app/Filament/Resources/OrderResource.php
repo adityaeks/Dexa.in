@@ -60,11 +60,7 @@ class OrderResource extends Resource
                                     ->schema([
                                         TextInput::make('nama')
                                             ->label('Nama')
-                                            ->required()
-                                            ->unique(ignoreRecord: true, table: 'hargas', column: 'nama')
-                                            ->validationMessages([
-                                                'unique' => 'Nama sudah terdaftar, silakan gunakan nama lain.',
-                                            ]),
+                                            ->required(),
                                         Select::make('tingkat')
                                             ->label('Tingkat')
                                             ->options([
@@ -130,13 +126,24 @@ class OrderResource extends Resource
                                 }
 
                                 $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
-                                // price_dexain = 10% jika total <= 100000, 20% jika > 100000
-                                if ($totalPrice <= 100000) {
-                                    $dexain = (int) round($totalPrice * 0.1);
+
+                                // Check if any selected Jokian is "Turnitin"
+                                $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+
+                                if ($hasTurnitin) {
+                                    // If Turnitin is selected, all amount goes to price_dexain
+                                    $dexain = $totalPrice;
+                                    $akademisi = 0;
                                 } else {
-                                    $dexain = (int) round($totalPrice * 0.2);
+                                    // Normal logic: price_dexain = 10% jika total <= 100000, 20% jika > 100000
+                                    if ($totalPrice <= 100000) {
+                                        $dexain = (int) round($totalPrice * 0.1);
+                                    } else {
+                                        $dexain = (int) round($totalPrice * 0.2);
+                                    }
+                                    $akademisi = $totalPrice - $dexain;
                                 }
-                                $akademisi = $totalPrice - $dexain;
+
                                 $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                 $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
 
@@ -201,13 +208,23 @@ class OrderResource extends Resource
 
                                     $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
 
-                                    // Calculate price_dexain and price_akademisi
-                                    if ($totalPrice <= 100000) {
-                                        $dexain = (int) round($totalPrice * 0.1);
+                                    // Check if any selected Jokian is "Turnitin"
+                                    $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+
+                                    if ($hasTurnitin) {
+                                        // If Turnitin is selected, all amount goes to price_dexain
+                                        $dexain = $totalPrice;
+                                        $akademisi = 0;
                                     } else {
-                                        $dexain = (int) round($totalPrice * 0.2);
+                                        // Normal logic: price_dexain = 10% jika total <= 100000, 20% jika > 100000
+                                        if ($totalPrice <= 100000) {
+                                            $dexain = (int) round($totalPrice * 0.1);
+                                        } else {
+                                            $dexain = (int) round($totalPrice * 0.2);
+                                        }
+                                        $akademisi = $totalPrice - $dexain;
                                     }
-                                    $akademisi = $totalPrice - $dexain;
+
                                     $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
                                     $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
 
