@@ -42,6 +42,7 @@ class PaydayRankingChartWidget extends ChartWidget
             ->select('akademisi_name', DB::raw('SUM(CAST(price AS DECIMAL(15,2))) as total_price'))
             ->whereNotNull('akademisi_name')
             ->where('akademisi_name', '!=', '')
+            ->where('akademisi_name', '!=', 'Dexain')
             ->groupBy('akademisi_name')
             ->orderByDesc('total_price')
             ->limit(10)
@@ -67,7 +68,6 @@ class PaydayRankingChartWidget extends ChartWidget
 
         // Create a map of all akademisi with their fund data
         $allAkademisi = [
-            // 'Dexain' => (float) $fundData->total_dexain,
             'Eko' => (float) $fundData->total_eko,
             'Amar' => (float) $fundData->total_amar,
             'Cece' => (float) $fundData->total_cece,

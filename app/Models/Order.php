@@ -81,6 +81,25 @@ class Order extends Model implements Eventable
                     // Note: fund_dexain akan otomatis terhapus oleh foreign key cascade
                 }
             }
+
+            // Logic untuk menghapus data Payin ketika order Turnitin dihapus
+            $hargaList = Harga::whereIn('id', (array)$order->nama)->get();
+            $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+
+            if ($hasTurnitin) {
+                // Hapus data Payin yang terkait dengan order Turnitin ini
+                // Cari berdasarkan price yang sama dengan order dan description yang mengandung "Turnitin"
+                Payin::where('price', $order->price)
+                     ->where('description', 'like', '%Turnitin%')
+                     ->delete();
+
+                // Kurangi value 'in' di tabel fund untuk order Turnitin
+                // Karena Turnitin langsung masuk ke dexain (tidak melalui fundDexain)
+                $fund = Fund::first();
+                if ($fund && $order->price_dexain > 0) {
+                    $fund->decrement('in', $order->price_dexain);
+                }
+            }
         });
 
         static::deleted(function ($order) {

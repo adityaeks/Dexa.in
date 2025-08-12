@@ -6,6 +6,7 @@ use App\Models\Fund;
 use App\Models\Payin;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Carbon\Carbon;
 
 class PayinStatsOverview extends BaseWidget
 {
@@ -16,6 +17,9 @@ class PayinStatsOverview extends BaseWidget
 
         $totalIn = $fund ? $fund->in : 0;
         $totalPayins = Payin::sum('price');
+
+        // Get today's payins
+        $todayPayins = Payin::whereDate('created_at', Carbon::today())->sum('price');
 
         return [
             Stat::make('Total Kas', 'Rp ' . number_format($totalIn, 0, ',', '.'))
@@ -29,6 +33,12 @@ class PayinStatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success')
                 ->chart([17, 16, 14, 15, 14, 13, 12]),
+
+            Stat::make('Pemasukan Hari Ini', 'Rp ' . number_format($todayPayins, 0, ',', '.'))
+                ->description('Dana masuk hari ini')
+                ->descriptionIcon('heroicon-m-calendar-days')
+                ->color('info')
+                ->chart([5, 8, 12, 9, 15, 11, 18]),
         ];
     }
 }

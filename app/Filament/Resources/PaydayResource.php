@@ -25,9 +25,9 @@ class PaydayResource extends Resource
     protected static ?string $model = Payday::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
-    protected static ?string $navigationLabel = 'Pajak';
-    protected static ?string $modelLabel = 'Pajak';
-    protected static ?string $pluralModelLabel = 'Pajak';
+    protected static ?string $navigationLabel = 'Salary';
+    protected static ?string $modelLabel = 'Salary';
+    protected static ?string $pluralModelLabel = 'Salary';
     protected static ?string $navigationGroup = 'Manajemen Dexa.in';
     protected static ?int $navigationSort = 1;
 
@@ -145,6 +145,11 @@ class PaydayResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function ($query) {
+                return $query->whereHas('akademisi', function ($q) {
+                    $q->whereIn('name', ['dexain', 'eko', 'amar', 'cece']);
+                });
+            })
             ->columns([
                 // TextColumn::make('seq')->label('No'),
                 TextColumn::make('tr_code')->label('NOTA')
@@ -159,7 +164,9 @@ class PaydayResource extends Resource
             ->filters([
                 SelectFilter::make('akademisi_id')
                     ->label('Akademisi')
-                    ->relationship('akademisi', 'name')
+                    ->relationship('akademisi', 'name', function ($query) {
+                        return $query->whereIn('name', ['dexain', 'eko', 'amar', 'cece']);
+                    })
                     ->searchable(),
                 Filter::make('created_at')
                     ->form([
