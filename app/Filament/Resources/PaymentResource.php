@@ -14,14 +14,15 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 
 class PaymentResource extends Resource
 {
     protected static ?string $model = Payment::class;
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    protected static ?string $navigationLabel = 'Payment Customer';
+    protected static ?string $navigationLabel = 'Pembayaran Customer';
     protected static ?string $modelLabel = 'Payment';
-    protected static ?string $pluralModelLabel = 'Payments';
+    protected static ?string $pluralModelLabel = 'Pembayaran Customer';
     protected static ?string $navigationGroup = 'Manajemen Order';
     protected static ?int $navigationSort = 2;
 
@@ -131,7 +132,7 @@ class PaymentResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('seq')->label('No Nota'),
+                TextColumn::make('seq')->label('No'),
                 TextColumn::make('tr_code')
                     ->label('Nota Order')
                     ->searchable(),
@@ -184,7 +185,11 @@ class PaymentResource extends Resource
                             $order->save();
                         }
                     }),
-                ]);
+                ])
+            ->groups([
+                Group::make('tr_code')
+                    ->label('Nomer Nota'),
+            ]);
     }
 
     public static function getPages(): array

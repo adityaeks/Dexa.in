@@ -19,7 +19,7 @@ class HargaResource extends Resource
 {
     protected static ?string $model = Harga::class;
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationLabel = 'List Harga';
+    protected static ?string $navigationLabel = 'Harga';
     protected static ?string $modelLabel = 'Harga';
     protected static ?string $pluralModelLabel = 'Harga';
     protected static ?string $navigationGroup = 'Master Data';

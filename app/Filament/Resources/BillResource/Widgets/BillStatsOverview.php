@@ -16,8 +16,8 @@ class BillStatsOverview extends BaseWidget
 
         return [
             Stat::make('Total Pemasukan', 'Rp ' . number_format($totalPemasukan, 0, '', '.')),
-            Stat::make('Total Pengeluaran', 'Rp ' . number_format($totalPengeluaran, 0, '', '.')),
-            Stat::make('Sisa', 'Rp ' . number_format($sisa, 0, '', '.'))
+            Stat::make('Total Pembayaran', 'Rp ' . number_format($totalPengeluaran, 0, '', '.')),
+            Stat::make('Belum Dibayar', 'Rp ' . number_format($sisa, 0, '', '.'))
         ];
     }
 }
