@@ -28,6 +28,8 @@ class AkademisiResource extends Resource
     protected static ?string $modelLabel = 'Akademisi';
 
     protected static ?string $pluralModelLabel = 'Akademisi';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

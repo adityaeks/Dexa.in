@@ -22,6 +22,8 @@ class HargaResource extends Resource
     protected static ?string $navigationLabel = 'List Harga';
     protected static ?string $modelLabel = 'Harga';
     protected static ?string $pluralModelLabel = 'Harga';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
