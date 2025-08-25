@@ -27,33 +27,52 @@ class CreateOrder extends CreateRecord
             }
         }
         $data['nomer_nota'] = $this->generateNomerNota();
-        // Hitung total harga dari array id harga (multi-jokian)
+        // Hitung total harga dari array id harga (multi-jokian) dengan qty JSON
         $totalHarga = 0;
-        if (!empty($data['nama']) && is_array($data['nama'])) {
-            $totalHarga = Harga::whereIn('id', $data['nama'])->get()->sum('harga');
-        } elseif (!empty($data['nama'])) {
-            $harga = Harga::find($data['nama']);
-            $totalHarga = $harga?->harga ?? 0;
-        }
+        $hargaList = Harga::whereIn('id', (array)$data['nama'])->get();
 
-        // Multiply by qty if qty is filled
-        $qty = (int) ($data['qty'] ?? 1);
-        if ($qty > 0) {
-            $totalHarga = $totalHarga * $qty;
+        // Parse qty JSON
+        $qtyJson = $data['qty'] ?? [];
+        if (is_string($qtyJson)) {
+            $qtyJson = json_decode($qtyJson, true) ?? [];
         }
+        if (!is_array($qtyJson)) {
+            $qtyJson = [];
+        }
+        $qtyTurnitin = (int) ($qtyJson['Turnitin'] ?? 0);
+        $qtyParafrase = (int) ($qtyJson['Parafrase'] ?? 0);
+        $qtyRevisi = (int) ($qtyJson['Revisi'] ?? 0);
 
+        // Hitung total dengan qty per item
+        $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+        $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
+        $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
+        $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+        $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
+
+        $turnitinTotal = $turnitinUnit * $qtyTurnitin;
+        $parafraseTotal = $parafraseUnit * $qtyParafrase;
+        $revisiTotal = $revisiUnit * $qtyRevisi;
+        $totalOthers = $othersUnit;
+
+        $totalHarga = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
         $data['price'] = $totalHarga;
 
         // Cek apakah ada jokian Turnitin
-        $hargaList = Harga::whereIn('id', (array)$data['nama'])->get();
         $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
 
         // Hitung dan set price_dexain & price_akademisi di backend agar selalu tersimpan
         if ($totalHarga > 0) {
             if ($hasTurnitin) {
-                // Jika Turnitin dipilih, semua harga untuk dexain
-                $dexain = $totalHarga;
-                $akademisi = 0;
+                // Alokasi fee: Turnitin 100% ke Dexain, sisanya normal 10%/20%
+                $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                if ($normalBase <= 100000) {
+                    $normalFee = (int) round($normalBase * 0.1);
+                } else {
+                    $normalFee = (int) round($normalBase * 0.2);
+                }
+                $dexain = $turnitinTotal + $normalFee;
+                $akademisi = $normalBase - $normalFee;
             } else {
                 // Logic normal: price_dexain = 10% jika total <= 100000, 20% jika > 100000
                 if ($totalHarga <= 100000) {

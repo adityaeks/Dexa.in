@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\{ Pages, RelationManagers\PaymentsRelationManager, Widgets\OrderStatsOverview };
 use App\Models\{ Order, Harga, Customer, Akademisi };
-use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, DateTimePicker, Repeater, FileUpload, Textarea };
+use Filament\Forms\Components\{ Select, TextInput, Grid, DatePicker, DateTimePicker, Repeater, FileUpload, Textarea, Hidden };
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
@@ -114,26 +114,96 @@ class OrderResource extends Resource
                             })
                             ->reactive()
                             ->dehydrated(true)
-                            ->afterStateUpdated(function ($state, $set, $get) {
-                                // $state sekarang array of id harga
-                                $hargaList = Harga::whereIn('id', (array)$state)->get();
-                                $totalPrice = $hargaList->sum('harga');
-
-                                // Multiply by qty if qty is filled
-                                $qty = (int) $get('qty');
-                                if ($qty > 0) {
-                                    $totalPrice = $totalPrice * $qty;
-                                }
+                            ->afterStateHydrated(function ($state, $set, $get) {
+                                // Recompute on load: qty JSON by nama (default 0)
+                                $hargaList = Harga::whereIn('id', (array) $state)->get();
+                                $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+                                $qtyJson = (array) ($get('qty') ?? []);
+                                $qtyTurnitin = (int) ($qtyJson['Turnitin'] ?? 0);
+                                $qtyParafrase = (int) ($qtyJson['Parafrase'] ?? 0);
+                                $qtyRevisi = (int) ($qtyJson['Revisi'] ?? 0);
+                                $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
+                                $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
+                                $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+                                $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
+                                $turnitinTotal = $turnitinUnit * $qtyTurnitin;
+                                $parafraseTotal = $parafraseUnit * $qtyParafrase;
+                                $revisiTotal = $revisiUnit * $qtyRevisi;
+                                $totalOthers = $othersUnit;
+                                $totalPrice = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
 
                                 $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
 
-                                // Check if any selected Jokian is "Turnitin"
                                 $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
-
                                 if ($hasTurnitin) {
-                                    // If Turnitin is selected, all amount goes to price_dexain
-                                    $dexain = $totalPrice;
-                                    $akademisi = 0;
+                                    $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                                    if ($normalBase <= 100000) {
+                                        $normalFee = (int) round($normalBase * 0.1);
+                                    } else {
+                                        $normalFee = (int) round($normalBase * 0.2);
+                                    }
+                                    $dexain = $turnitinTotal + $normalFee;
+                                    $akademisi = $normalBase - $normalFee;
+                                } else {
+                                    if ($totalPrice <= 100000) {
+                                        $dexain = (int) round($totalPrice * 0.1);
+                                    } else {
+                                        $dexain = (int) round($totalPrice * 0.2);
+                                    }
+                                    $akademisi = $totalPrice - $dexain;
+                                }
+
+                                $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
+                                $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
+
+                                // Fill qty fields from JSON data
+                                $qtyJson = (array) ($get('qty') ?? []);
+                                $set('qty_turnitin', (int) ($qtyJson['Turnitin'] ?? 0));
+                                $set('qty_parafrase', (int) ($qtyJson['Parafrase'] ?? 0));
+                                $set('qty_revisi', (int) ($qtyJson['Revisi'] ?? 0));
+                            })
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // $state sekarang array of id harga
+                                $hargaList = Harga::whereIn('id', (array)$state)->get();
+                                // qty JSON by nama (default 0)
+                                $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+                                $qtyJson = (array) ($get('qty') ?? []);
+                                $qtyTurnitin = (int) ($qtyJson['Turnitin'] ?? 0);
+                                $qtyParafrase = (int) ($qtyJson['Parafrase'] ?? 0);
+                                $qtyRevisi = (int) ($qtyJson['Revisi'] ?? 0);
+                                $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
+                                $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
+                                $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+                                $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
+                                $turnitinTotal = $turnitinUnit * $qtyTurnitin;
+                                $parafraseTotal = $parafraseUnit * $qtyParafrase;
+                                $revisiTotal = $revisiUnit * $qtyRevisi;
+                                $totalOthers = $othersUnit;
+                                $totalPrice = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
+
+                                $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
+
+                                // Sinkronisasi qty JSON key sesuai ketersediaan (default 0)
+                                $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+                                $hasParafrase = $hargaList->contains('nama', 'Parafrase');
+                                $hasRevisi = $hargaList->contains('nama', 'Revisi');
+                                $currentQty = (array) ($get('qty') ?? []);
+                                if (!$hasTurnitin) { $currentQty['Turnitin'] = 0; }
+                                if (!$hasParafrase) { $currentQty['Parafrase'] = 0; }
+                                if (!$hasRevisi) { $currentQty['Revisi'] = 0; }
+                                $set('qty', $currentQty);
+
+                                // Alokasi fee: Turnitin 100% ke Dexain, sisanya normal 10%/20%
+                                $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+                                if ($hasTurnitin) {
+                                    $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                                    if ($normalBase <= 100000) {
+                                        $normalFee = (int) round($normalBase * 0.1);
+                                    } else {
+                                        $normalFee = (int) round($normalBase * 0.2);
+                                    }
+                                    $dexain = $turnitinTotal + $normalFee;
+                                    $akademisi = $normalBase - $normalFee;
                                 } else {
                                     // Normal logic: price_dexain = 10% jika total <= 100000, 20% jika > 100000
                                     if ($totalPrice <= 100000) {
@@ -186,42 +256,57 @@ class OrderResource extends Resource
                             ->hidden()
                             ->dehydrated()
                             ->placeholder('Auto Generate'),
-                                                TextInput::make('qty')
-                            ->label('Jumlah')
-                            ->placeholder('Untuk Jokian Parafrase dll')
+                        TextInput::make('qty_turnitin')
+                            ->label('Qty Turnitin')
                             ->numeric()
-                            ->minValue(1)
+                            ->minValue(0)
+                            ->formatStateUsing(function ($state) {
+                                return $state == 0 ? null : $state;
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                return $state === null || $state === '' ? 0 : (int) $state;
+                            })
                             ->live()
-                            ->dehydrated(true)
-                            ->afterStateUpdated(function ($state, $set, $get) {
-                                // Recalculate price when qty changes
-                                $namaIds = (array) $get('nama');
-                                if (!empty($namaIds)) {
-                                    $hargaList = Harga::whereIn('id', $namaIds)->get();
-                                    $totalPrice = $hargaList->sum('harga');
+                            ->visible(function ($get) {
+                                $ids = (array) $get('nama');
+                                if (empty($ids)) return false;
+                                $hargaList = Harga::whereIn('id', $ids)->get();
+                                return $hargaList->contains('nama', 'Turnitin');
+                            })
 
-                                    // Multiply by qty if qty is filled
-                                    $qty = (int) $state;
-                                    if ($qty > 0) {
-                                        $totalPrice = $totalPrice * $qty;
-                                    }
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                $qty = (array) ($get('qty') ?? []);
+                                $qty['Turnitin'] = max(0, (int) $state);
+                                $set('qty', $qty);
+
+                                // Recalculate totals using qty JSON
+                                $ids = (array) $get('nama');
+                                if (!empty($ids)) {
+                                    $hargaList = Harga::whereIn('id', $ids)->get();
+                                    $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+                                    $qtyTurnitin = (int) ($qty['Turnitin'] ?? 0);
+                                    $qtyParafrase = (int) ($qty['Parafrase'] ?? 0);
+                                    $qtyRevisi = (int) ($qty['Revisi'] ?? 0);
+                                    $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
+                                    $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
+                                    $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+                                    $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
+                                    $turnitinTotal = $turnitinUnit * $qtyTurnitin;
+                                    $parafraseTotal = $parafraseUnit * $qtyParafrase;
+                                    $revisiTotal = $revisiUnit * $qtyRevisi;
+                                    $totalOthers = $othersUnit;
+                                    $totalPrice = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
 
                                     $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
 
-                                    // Check if any selected Jokian is "Turnitin"
                                     $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
-
                                     if ($hasTurnitin) {
-                                        // If Turnitin is selected, all amount goes to price_dexain
-                                        $dexain = $totalPrice;
-                                        $akademisi = 0;
+                                        $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                                        $normalFee = (int) round($normalBase * ($normalBase <= 100000 ? 0.1 : 0.2));
+                                        $dexain = $turnitinTotal + $normalFee;
+                                        $akademisi = $normalBase - $normalFee;
                                     } else {
-                                        // Normal logic: price_dexain = 10% jika total <= 100000, 20% jika > 100000
-                                        if ($totalPrice <= 100000) {
-                                            $dexain = (int) round($totalPrice * 0.1);
-                                        } else {
-                                            $dexain = (int) round($totalPrice * 0.2);
-                                        }
+                                        $dexain = (int) round($totalPrice * ($totalPrice <= 100000 ? 0.1 : 0.2));
                                         $akademisi = $totalPrice - $dexain;
                                     }
 
@@ -231,17 +316,11 @@ class OrderResource extends Resource
                                     // Update price_akademisi2 berdasarkan harga akademisi baru
                                     $akademisiIds = (array) $get('akademisi_id');
                                     $existingPriceAkademisi2 = $get('price_akademisi2') ?? [];
-
                                     if (count($akademisiIds) === 1) {
-                                        // Satu akademisi
                                         $set('price_akademisi2', [
-                                            [
-                                                'akademisi_id' => $akademisiIds[0],
-                                                'harga' => $akademisi,
-                                            ]
+                                            [ 'akademisi_id' => $akademisiIds[0], 'harga' => $akademisi ]
                                         ]);
                                     } elseif (count($akademisiIds) > 1) {
-                                        // Multi akademisi, pertahankan input yang sudah ada atau default 0
                                         $existingPriceMap = [];
                                         if (is_array($existingPriceAkademisi2)) {
                                             foreach ($existingPriceAkademisi2 as $row) {
@@ -250,18 +329,187 @@ class OrderResource extends Resource
                                                 }
                                             }
                                         }
-
                                         $newPriceAkademisi2 = [];
                                         foreach ($akademisiIds as $id) {
                                             $newPriceAkademisi2[] = [
                                                 'akademisi_id' => $id,
-                                                'harga' => $existingPriceMap[$id] ?? 0, // Gunakan input yang sudah ada atau default 0
+                                                'harga' => $existingPriceMap[$id] ?? 0,
                                             ];
                                         }
                                         $set('price_akademisi2', $newPriceAkademisi2);
                                     }
                                 }
                             }),
+                        TextInput::make('qty_parafrase')
+                            ->label('Qty Parafrase')
+                            ->numeric()
+                            ->minValue(0)
+                            ->formatStateUsing(function ($state) {
+                                return $state == 0 ? null : $state;
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                return $state === null || $state === '' ? 0 : (int) $state;
+                            })
+                            ->live()
+                            ->visible(function ($get) {
+                                $ids = (array) $get('nama');
+                                if (empty($ids)) return false;
+                                $hargaList = Harga::whereIn('id', $ids)->get();
+                                return $hargaList->contains('nama', 'Parafrase');
+                            })
+
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                $qty = (array) ($get('qty') ?? []);
+                                $qty['Parafrase'] = max(0, (int) $state);
+                                $set('qty', $qty);
+
+                                // Recalculate totals using qty JSON
+                                $ids = (array) $get('nama');
+                                if (!empty($ids)) {
+                                    $hargaList = Harga::whereIn('id', $ids)->get();
+                                    $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+                                    $qtyTurnitin = (int) ($qty['Turnitin'] ?? 0);
+                                    $qtyParafrase = (int) ($qty['Parafrase'] ?? 0);
+                                    $qtyRevisi = (int) ($qty['Revisi'] ?? 0);
+                                    $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
+                                    $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
+                                    $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+                                    $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
+                                    $turnitinTotal = $turnitinUnit * $qtyTurnitin;
+                                    $parafraseTotal = $parafraseUnit * $qtyParafrase;
+                                    $revisiTotal = $revisiUnit * $qtyRevisi;
+                                    $totalOthers = $othersUnit;
+                                    $totalPrice = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
+
+                                    $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
+
+                                    $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+                                    if ($hasTurnitin) {
+                                        $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                                        $normalFee = (int) round($normalBase * ($normalBase <= 100000 ? 0.1 : 0.2));
+                                        $dexain = $turnitinTotal + $normalFee;
+                                        $akademisi = $normalBase - $normalFee;
+                                    } else {
+                                        $dexain = (int) round($totalPrice * ($totalPrice <= 100000 ? 0.1 : 0.2));
+                                        $akademisi = $totalPrice - $dexain;
+                                    }
+
+                                    $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
+                                    $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
+
+                                    // Update price_akademisi2 berdasarkan harga akademisi baru
+                                    $akademisiIds = (array) $get('akademisi_id');
+                                    $existingPriceAkademisi2 = $get('price_akademisi2') ?? [];
+                                    if (count($akademisiIds) === 1) {
+                                        $set('price_akademisi2', [
+                                            [ 'akademisi_id' => $akademisiIds[0], 'harga' => $akademisi ]
+                                        ]);
+                                    } elseif (count($akademisiIds) > 1) {
+                                        $existingPriceMap = [];
+                                        if (is_array($existingPriceAkademisi2)) {
+                                            foreach ($existingPriceAkademisi2 as $row) {
+                                                if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                                                    $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                                                }
+                                            }
+                                        }
+                                        $newPriceAkademisi2 = [];
+                                        foreach ($akademisiIds as $id) {
+                                            $newPriceAkademisi2[] = [
+                                                'akademisi_id' => $id,
+                                                'harga' => $existingPriceMap[$id] ?? 0,
+                                            ];
+                                        }
+                                        $set('price_akademisi2', $newPriceAkademisi2);
+                                    }
+                                }
+                            }),
+                        TextInput::make('qty_revisi')
+                            ->label('Qty Revisi')
+                            ->numeric()
+                            ->minValue(0)
+                            ->formatStateUsing(function ($state) {
+                                return $state == 0 ? null : $state;
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                return $state === null || $state === '' ? 0 : (int) $state;
+                            })
+                            ->live()
+                            ->visible(function ($get) {
+                                $ids = (array) $get('nama');
+                                if (empty($ids)) return false;
+                                $hargaList = Harga::whereIn('id', $ids)->get();
+                                return $hargaList->contains('nama', 'Revisi');
+                            })
+
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                $qty = (array) ($get('qty') ?? []);
+                                $qty['Revisi'] = max(0, (int) $state);
+                                $set('qty', $qty);
+
+                                // Recalculate totals using qty JSON
+                                $ids = (array) $get('nama');
+                                if (!empty($ids)) {
+                                    $hargaList = Harga::whereIn('id', $ids)->get();
+                                    $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+                                    $qtyTurnitin = (int) ($qty['Turnitin'] ?? 0);
+                                    $qtyParafrase = (int) ($qty['Parafrase'] ?? 0);
+                                    $qtyRevisi = (int) ($qty['Revisi'] ?? 0);
+                                    $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
+                                    $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
+                                    $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+                                    $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
+                                    $turnitinTotal = $turnitinUnit * $qtyTurnitin;
+                                    $parafraseTotal = $parafraseUnit * $qtyParafrase;
+                                    $revisiTotal = $revisiUnit * $qtyRevisi;
+                                    $totalOthers = $othersUnit;
+                                    $totalPrice = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
+
+                                    $set('price', $totalPrice === 0 ? null : number_format($totalPrice, 0, '', '.'));
+
+                                    $hasTurnitin = $hargaList->contains('nama', 'Turnitin');
+                                    if ($hasTurnitin) {
+                                        $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                                        $normalFee = (int) round($normalBase * ($normalBase <= 100000 ? 0.1 : 0.2));
+                                        $dexain = $turnitinTotal + $normalFee;
+                                        $akademisi = $normalBase - $normalFee;
+                                    } else {
+                                        $dexain = (int) round($totalPrice * ($totalPrice <= 100000 ? 0.1 : 0.2));
+                                        $akademisi = $totalPrice - $dexain;
+                                    }
+
+                                    $set('price_dexain', $dexain === 0 ? null : number_format($dexain, 0, '', '.'));
+                                    $set('price_akademisi', $akademisi === 0 ? null : number_format($akademisi, 0, '', '.'));
+
+                                    // Update price_akademisi2 berdasarkan harga akademisi baru
+                                    $akademisiIds = (array) $get('akademisi_id');
+                                    $existingPriceAkademisi2 = $get('price_akademisi2') ?? [];
+                                    if (count($akademisiIds) === 1) {
+                                        $set('price_akademisi2', [
+                                            [ 'akademisi_id' => $akademisiIds[0], 'harga' => $akademisi ]
+                                        ]);
+                                    } elseif (count($akademisiIds) > 1) {
+                                        $existingPriceMap = [];
+                                        if (is_array($existingPriceAkademisi2)) {
+                                            foreach ($existingPriceAkademisi2 as $row) {
+                                                if (isset($row['akademisi_id']) && isset($row['harga'])) {
+                                                    $existingPriceMap[$row['akademisi_id']] = $row['harga'];
+                                                }
+                                            }
+                                        }
+                                        $newPriceAkademisi2 = [];
+                                        foreach ($akademisiIds as $id) {
+                                            $newPriceAkademisi2[] = [
+                                                'akademisi_id' => $id,
+                                                'harga' => $existingPriceMap[$id] ?? 0,
+                                            ];
+                                        }
+                                        $set('price_akademisi2', $newPriceAkademisi2);
+                                    }
+                                }
+                            }),
+                        Hidden::make('qty')
+                            ->dehydrated(true),
 
                         // code tidak perlu di display di form
                     ]),
@@ -760,6 +1008,7 @@ class OrderResource extends Resource
             ->bulkActions([
                 // Tidak ada bulk actions
             ])
+            ->defaultSort('created_at', 'desc')
             ->groups([
                 Group::make('created_at')
                     ->label('Order Date')

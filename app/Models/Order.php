@@ -180,6 +180,7 @@ class Order extends Model implements Eventable
 
     protected $casts = [
         'nama' => 'array',
+        'qty' => 'array',
         'file_tambahan' => 'array',
         'link_tambahan' => 'array',
         'payment_ids' => 'array',
