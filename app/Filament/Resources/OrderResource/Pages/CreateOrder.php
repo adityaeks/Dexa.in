@@ -42,20 +42,23 @@ class CreateOrder extends CreateRecord
         $qtyTurnitin = (int) ($qtyJson['Turnitin'] ?? 0);
         $qtyParafrase = (int) ($qtyJson['Parafrase'] ?? 0);
         $qtyRevisi = (int) ($qtyJson['Revisi'] ?? 0);
+        $qtyPerapian = (int) ($qtyJson['Perapian'] ?? 0);
 
         // Hitung total dengan qty per item
-        $subsetNames = ['Turnitin', 'Parafrase', 'Revisi'];
+        $subsetNames = ['Turnitin', 'Parafrase', 'Revisi', 'Perapian'];
         $turnitinUnit = $hargaList->filter(fn ($h) => $h->nama === 'Turnitin')->sum('harga');
         $parafraseUnit = $hargaList->filter(fn ($h) => $h->nama === 'Parafrase')->sum('harga');
         $revisiUnit = $hargaList->filter(fn ($h) => $h->nama === 'Revisi')->sum('harga');
+        $perapianUnit = $hargaList->filter(fn ($h) => $h->nama === 'Perapian')->sum('harga');
         $othersUnit = $hargaList->filter(fn ($h) => !in_array($h->nama, $subsetNames))->sum('harga');
 
         $turnitinTotal = $turnitinUnit * $qtyTurnitin;
         $parafraseTotal = $parafraseUnit * $qtyParafrase;
         $revisiTotal = $revisiUnit * $qtyRevisi;
+        $perapianTotal = $perapianUnit * $qtyPerapian;
         $totalOthers = $othersUnit;
 
-        $totalHarga = $turnitinTotal + $parafraseTotal + $revisiTotal + $totalOthers;
+        $totalHarga = $turnitinTotal + $parafraseTotal + $revisiTotal + $perapianTotal + $totalOthers;
         $data['price'] = $totalHarga;
 
         // Cek apakah ada jokian Turnitin
@@ -65,7 +68,7 @@ class CreateOrder extends CreateRecord
         if ($totalHarga > 0) {
             if ($hasTurnitin) {
                 // Alokasi fee: Turnitin 100% ke Dexain, sisanya normal 10%/20%
-                $normalBase = $parafraseTotal + $revisiTotal + $totalOthers;
+                $normalBase = $parafraseTotal + $revisiTotal + $perapianTotal + $totalOthers;
                 if ($normalBase <= 100000) {
                     $normalFee = (int) round($normalBase * 0.1);
                 } else {
